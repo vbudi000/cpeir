@@ -36,6 +36,8 @@ This repository is created this way:
 	operator-sdk add controller --api-version=cloud.ibm.com/v1alpha1 --kind=CPeir
 	```
 
+	![sdk-run](images/sdk-run.png)
+
 4. Modify the API part (the Custom Resource object definition)
 
 	```
