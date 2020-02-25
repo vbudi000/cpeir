@@ -2,12 +2,11 @@
 
 ## Requirements
 
-- [git][git_tool]
-- [go][go_tool] version v1.13+.
-- [mercurial][mercurial_tool] version 3.9+
-- [docker][docker_tool] version 17.03+.
-  - Alternatively [podman][podman_tool] `v1.2.0+` or [buildah][buildah_tool] `v1.7+`
-- [kubectl][kubectl_tool] version v1.12.0+ or [oc]{oc_tool].
+- [git](https://git-scm.com/downloads)
+- [go](https://golang.org/dl/) version v1.13+.
+- [mercurial](https://www.mercurial-scm.org/downloads) version 3.9+
+- docker version 17.03+ or podman v1.2.0+ or buildah v1.7+
+- kubectl version v1.12.0+ or oc version 4.2+
 - operator-sdk `brew install operator-sdk`
 - Access to a Kubernetes v1.12.0+ cluster.
 
