@@ -1,4 +1,17 @@
-# Cloud Pak cpeir
+# Cloud Pak LifeCycle Operator - cpeir project
+
+## Overview
+
+The IBM Cloud Pak lifecycle management operator will run as native extension to Kuberentes (OpenShift) to provide insight and manage IBM Cloud Pak components.
+This operator will:
+
+  - manage a Cloud Pak deployment
+  - check for requisite resource requirements
+  - verify the installation
+  - do stability check
+  - check for updates
+
+Detail design spec is defined [here](https://github.ibm.com/CASE/cloudpak-prereq-checker) :TODO: replace with in-repo design spec.
 
 ## Requirements
 
