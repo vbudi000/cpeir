@@ -2,7 +2,6 @@ package cpeir
 
 import (
 	"context"
-
 	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
 	//corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -10,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	//"k8s.io/apimachinery/pkg/api/resource"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -118,14 +118,39 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	//nodes, err := clientset.NodeV1alpha1().RESTClient().List(context.TODO)
 	reqLogger.Info("There are %d nodes in the cluster\n", "Node number", len(nodes.Items))
+	var totCpu int64;
+	var totMemory int64;
+	totCpu = 0
+	totMemory = 0
+
 	if len(nodes.Items) > 0 {
 
 		for _, node := range nodes.Items {
-			reqLogger.Info("Node details","nodes",node)
-			reqLogger.Info("Node name","node name",node.Name,"node allocatable", node.Status.Allocatable)
+			acpu := node.Status.Allocatable.Cpu
+			amem := node.Status.Allocatable.Memory
+
+			acval := acpu();
+			acint := acval.MilliValue()
+			amval := amem();
+			amint, amok := amval.AsInt64()
+
+			reqLogger.Info("Node CPU","cpu",acint,"memory",amint, "Mok", amok)
+
+			reqLogger.Info("Node info","node name",node.Name,"node status", node.Status.Allocatable)
+	    totCpu = totCpu + acint
+			totMemory = totMemory + amint
 		}
 	}
 
+  reqLogger.Info("total available capacity:", "CPU", totCpu, "Memory", totMemory)
+
+	//instance.Status.ClusterStatus = "Initial"
+	//err := r.client.Status().Update(context.TODO(), instance)
+	//                if err != nil {
+	//                        reqLogger.Error(err, "Failed to update Memcached status.")
+	//                        return reconcile.Result{}, err
+	//                }
+	reqLogger.Info("status","status",instance.Status.ClusterStatus)
 	// Define a new Pod object
 	//pod := newPodForCR(instance)
 

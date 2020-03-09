@@ -16,7 +16,7 @@ spec:
       containers:
         - name: cpeir
           # Replace this with the built image name
-          image: ibmcloudacademy/cpeir:v0.0.1
+          image: ibmcloudacademy/cpeir:02
           command:
           - cpeir
           imagePullPolicy: Always
