@@ -11,7 +11,9 @@ This operator will:
   - do stability check
   - check for updates
 
-Detail design spec is defined [here](https://github.ibm.com/CASE/cloudpak-prereq-checker) :TODO: replace with in-repo design spec.
+For more details see [Technical Design](docs/design/technial-design.md)
+
+[Minimum Viable Product (MVP) Iteration 1](docs/design/mvp01.md) 
 
 ## Requirements
 
@@ -146,7 +148,7 @@ This repository is created this way:
 	  cptype: "cp4application"
 	  cpversion: "4.0.1"
 	```
-	
+
 8. Modify the controller program:
 
 	```
@@ -161,7 +163,7 @@ This repository is created this way:
 
 
 
-## When you are done 
+## When you are done
 
 1. Build your operator image:
 
@@ -195,5 +197,3 @@ This repository is created this way:
 	```
 	oc create -f deploy/crds/cloud.ibm.com_v1alpha1_cpeir_cr.yaml
 	```
-
-
