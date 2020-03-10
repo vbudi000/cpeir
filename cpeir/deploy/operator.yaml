@@ -19,6 +19,9 @@ spec:
           image: ibmcloudacademy/cpeir:02
           command:
           - cpeir
+          volumeMounts:
+          - name: cpcfg
+            mountPath: /cfgdata
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -31,3 +34,7 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "cpeir"
+      volumes:
+      - name: cpcfg
+        configMap:
+          name: cpeir-config

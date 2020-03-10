@@ -2,8 +2,10 @@ package cpeir
 
 import (
 	"context"
+	"time"
 	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
 	//corev1 "k8s.io/api/core/v1"
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +23,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+type CPrequirements struct {
+	System struct {
+		Cpu: int64
+		Memory: int64
+	}
+	Software struct {
+		Name: string
+	}
+}
 var log = logf.Log.WithName("controller_cpeir")
 
 /**
@@ -111,6 +122,8 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		reqLogger.Info(err.Error())
 	}
+
+	// Start of the reconcile loop - collect Node information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
 	if err != nil {
 		reqLogger.Info(err.Error())
@@ -134,9 +147,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			amval := amem();
 			amint, amok := amval.AsInt64()
 
-			reqLogger.Info("Node CPU","cpu",acint,"memory",amint, "Mok", amok)
-
-			reqLogger.Info("Node info","node name",node.Name,"node status", node.Status.Allocatable)
+			reqLogger.Info("Node Info","node name",node.Name,"cpu",acint,"memory",amint, "Mok", amok)
 	    totCpu = totCpu + acint
 			totMemory = totMemory + amint
 		}
@@ -144,40 +155,11 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
   reqLogger.Info("total available capacity:", "CPU", totCpu, "Memory", totMemory)
 
-	//instance.Status.ClusterStatus = "Initial"
-	//err := r.client.Status().Update(context.TODO(), instance)
-	//                if err != nil {
-	//                        reqLogger.Error(err, "Failed to update Memcached status.")
-	//                        return reconcile.Result{}, err
-	//                }
+	instance.Status.ClusterStatus = "Initial"
 	reqLogger.Info("status","status",instance.Status.ClusterStatus)
-	// Define a new Pod object
-	//pod := newPodForCR(instance)
-
-	// Set CPeir instance as the owner and controller
-	//if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-	//	return reconcile.Result{}, err
-	//}
-
-	// Check if this Pod already exists
-	//found := &corev1.Pod{}
-	//err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	//if err != nil && errors.IsNotFound(err) {
-	//	reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-	//	err = r.client.Create(context.TODO(), pod)
-	//	if err != nil {
-	//		return reconcile.Result{}, err
-	//	}
-
-		// Pod created successfully - don't requeue
-	//	return reconcile.Result{}, nil
-	//} else if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-
-	// Pod already exists - don't requeue
 	reqLogger.Info("Finished reconcile")
-	return reconcile.Result{}, nil
+	// Recheck status every minutes - may need to revisit
+	return reconcile.Result{RequeueAfter: time.Second*60}, nil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
