@@ -11,9 +11,9 @@ This operator will:
   - do stability check
   - check for updates
 
-For more details see [Technical Design](docs/design/technial-design.md)
+For more details see [Technical Design](docs/design/technical-design.md)
 
-[Minimum Viable Product (MVP) Iteration 1](docs/design/mvp01.md) 
+[Minimum Viable Product (MVP) Iteration 1](docs/design/mvp01.md)
 
 ## Requirements
 
