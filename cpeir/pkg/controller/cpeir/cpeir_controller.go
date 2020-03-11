@@ -3,6 +3,8 @@ package cpeir
 import (
 	"context"
 	"time"
+	"strconv"
+	"io/ioutil"
 	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
 	//corev1 "k8s.io/api/core/v1"
 	"gopkg.in/yaml.v2"
@@ -11,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/resource"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -25,11 +27,8 @@ import (
 
 type CPrequirements struct {
 	System struct {
-		Cpu: int64
-		Memory: int64
-	}
-	Software struct {
-		Name: string
+		Cpu string `yaml:"cpu,omitempty"`
+		Memory string `yaml:"memory,omitempty"`
 	}
 }
 var log = logf.Log.WithName("controller_cpeir")
@@ -123,64 +122,63 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		reqLogger.Info(err.Error())
 	}
 
-	// Start of the reconcile loop - collect Node information
+	// Start of the reconcile loop -
+	// Read configuration file
+	configFile := "/cfgdata/" + instance.Spec.CPType + "_" + instance.Spec.CPVersion +".yaml"
+	yamlFile, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		reqLogger.Info("yamlFile.Get err ", "Error", err)
+  }
+	var c CPrequirements
+  err = yaml.Unmarshal(yamlFile, &c)
+  if err != nil {
+		reqLogger.Info("Cannot un marshall file","Error", err)
+  }
+
+  reqLogger.Info("CP Requirement", "CPR", c, "cpu", c.System.Cpu)
+	cpureq, err := resource.ParseQuantity(c.System.Cpu)
+	memreq, err := resource.ParseQuantity(c.System.Memory)
+	reqLogger.Info("CPU", "error", err, "cpu", cpureq, "memory", memreq)
+
+	// Collect nodes information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
 	if err != nil {
 		reqLogger.Info(err.Error())
 	}
-
-	//nodes, err := clientset.NodeV1alpha1().RESTClient().List(context.TODO)
-	reqLogger.Info("There are %d nodes in the cluster\n", "Node number", len(nodes.Items))
-	var totCpu int64;
-	var totMemory int64;
-	totCpu = 0
-	totMemory = 0
+	reqLogger.Info("There are nodes in the cluster\n", "Node number", len(nodes.Items))
+	totCpu := resource.NewQuantity(0,resource.DecimalSI);
+	totMemory := resource.NewQuantity(0,resource.BinarySI);
+  var acpu *resource.Quantity
+	var amem *resource.Quantity
 
 	if len(nodes.Items) > 0 {
 
 		for _, node := range nodes.Items {
-			acpu := node.Status.Allocatable.Cpu
-			amem := node.Status.Allocatable.Memory
 
-			acval := acpu();
-			acint := acval.MilliValue()
-			amval := amem();
-			amint, amok := amval.AsInt64()
+			acpu = node.Status.Allocatable.Cpu()
+			amem = node.Status.Allocatable.Memory()
 
-			reqLogger.Info("Node Info","node name",node.Name,"cpu",acint,"memory",amint, "Mok", amok)
-	    totCpu = totCpu + acint
-			totMemory = totMemory + amint
+			totCpu.Add(*acpu)
+			totMemory.Add(*amem)
 		}
 	}
 
-  reqLogger.Info("total available capacity:", "CPU", totCpu, "Memory", totMemory)
+  reqLogger.Info("total available capacity:", "CPU", totCpu.MilliValue(), "Memory", totMemory.Value())
 
-	instance.Status.ClusterStatus = "Initial"
+  if (totCpu.Cmp(cpureq)<0) && (totMemory.Cmp(memreq)<0) {
+		instance.Status.ClusterStatus = "NotInstallable"
+	} else {
+		instance.Status.ClusterStatus = "ReadyToInstall"
+	}
+	instance.Status.StatusMessages = "Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
+	err = r.client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Status update failed")
+		return reconcile.Result{}, err
+	}
+
 	reqLogger.Info("status","status",instance.Status.ClusterStatus)
 	reqLogger.Info("Finished reconcile")
 	// Recheck status every minutes - may need to revisit
 	return reconcile.Result{RequeueAfter: time.Second*60}, nil
 }
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-//func newPodForCR(cr *cloudv1alpha1.CPeir) *corev1.Pod {
-//	labels := map[string]string{
-//		"app": cr.Name,
-//	}
-//	return &corev1.Pod{
-//		ObjectMeta: metav1.ObjectMeta{
-//			Name:      cr.Name + "-pod",
-//			Namespace: cr.Namespace,
-//			Labels:    labels,
-//		},
-//		Spec: corev1.PodSpec{
-//			Containers: []corev1.Container{
-//				{
-//					Name:    "busybox",
-//					Image:   "busybox",
-//					Command: []string{"sleep", "3600"},
-//				},
-//			},
-//		},
-//	}
-//}
