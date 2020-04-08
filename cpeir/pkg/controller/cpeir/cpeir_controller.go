@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	//configv1 "github.com/openshift/api/config/v1"
+	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -123,6 +125,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		reqLogger.Info(err.Error())
 	}
@@ -178,6 +181,17 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 	}
 
+	// Collect cluster information config.openshift.io/v1 (clientconfigv1.ClusterVersionsGetter)
+	var clientConfigV1 clientconfigv1.ConfigV1Interface
+  clientConfigV1, err = clientconfigv1.NewForConfig(config)
+
+	cver, err := clientConfigV1.ClusterVersions().Get("version", metav1.GetOptions{})
+	if err != nil {
+		reqLogger.Info(err.Error())
+	} else {
+		reqLogger.Info("CVER", "cv", cver.Status.Desired.Version)
+	}
+
 	// Collect nodes information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
 	if err != nil {
@@ -188,13 +202,16 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	totMemory := resource.NewQuantity(0,resource.BinarySI);
   var acpu *resource.Quantity
 	var amem *resource.Quantity
+	var nodeArch string;
+	var kubeVer string;
 
 	if len(nodes.Items) > 0 {
 
 		for _, node := range nodes.Items {
 			acpu = node.Status.Allocatable.Cpu()
 			amem = node.Status.Allocatable.Memory()
-
+			nodeArch = node.Status.NodeInfo.Architecture
+			kubeVer  = node.Status.NodeInfo.KubeletVersion
 			totCpu.Add(*acpu)
 			totMemory.Add(*amem)
 		}
@@ -213,6 +230,9 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	instance.Status.CPReqStorage = pvreq
 	instance.Status.ClusterCPU = *totCpu
 	instance.Status.ClusterMemory = *totMemory
+	instance.Status.ClusterArch = nodeArch
+	instance.Status.ClusterWorkerNum = len(nodes.Items)
+	instance.Status.ClusterKubelet = kubeVer
 
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {

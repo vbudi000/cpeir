@@ -83,6 +83,8 @@ This repository is created this way:
   				ClusterCPU resource.Quantity `json:"clustercpu"`
   				ClusterMemory resource.Quantity `json:"clustermemory"`
   				ClusterStorage resource.Quantity `json:"clusterstorage",omitempty`
+          ClusterArch string `json:"clusterarch,omitempty"`
+  				ClusterKubelet string `json:"clusterversion,omitempty"`
   				StatusMessages string `json:"statusMessages",omitempty`
           InstalledFeatures []string `json:"installedFeatures,omitempty"`
 	}

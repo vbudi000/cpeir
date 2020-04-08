@@ -1,0 +1,10 @@
+apiVersion: cloud.ibm.com/v1alpha1
+kind: CPeir
+metadata:
+  name: cp4multicloud
+spec:
+  cptype: "cp4multicloud"
+  cpversion: "1.2"
+  cpsizetype: "development"
+  cpfeatures:
+    - icam

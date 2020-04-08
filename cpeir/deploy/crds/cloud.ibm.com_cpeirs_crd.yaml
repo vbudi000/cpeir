@@ -38,26 +38,25 @@ spec:
             cpsizetype:
               type: string
             cptype:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: string
             cpversion:
               type: string
           required:
           - cpfeatures
+          - cpsizetype
           - cptype
           - cpversion
           type: object
         status:
           description: CPeirStatus defines the observed state of CPeir
           properties:
+            clusterArch:
+              type: string
+            clusterCpu:
+              type: string
+            clusterMemory:
+              type: string
             clusterStatus:
-              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                of cluster Important: Run "operator-sdk generate k8s" to regenerate
-                code after modifying this file Add custom validation using kubebuilder
-                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               enum:
               - Initial
               - NotInstallable
@@ -66,12 +65,12 @@ spec:
               - ValidationFailed
               - UpgradeAvailable
               type: string
-            clustercpu:
+            clusterStorage:
               type: string
-            clustermemory:
+            clusterVersion:
               type: string
-            clusterstorage:
-              type: string
+            clusterWorkerNum:
+              type: integer
             cpreqcpu:
               type: string
             cpreqmemory:
@@ -85,7 +84,13 @@ spec:
             statusMessages:
               type: string
           required:
+          - clusterCpu
+          - clusterMemory
           - clusterStatus
+          - clusterStorage
+          - cpreqcpu
+          - cpreqmemory
+          - cpreqstorage
           - statusMessages
           type: object
       required:
