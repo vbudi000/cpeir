@@ -35,16 +35,18 @@ spec:
               items:
                 type: string
               type: array
+            cpsizetype:
+              type: string
             cptype:
-              enum:
-              - cp4application
-              - cp4integration
-              - cp4automation
-              - cp4multicloud
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: string
             cpversion:
               type: string
           required:
+          - cpfeatures
           - cptype
           - cpversion
           type: object
@@ -52,6 +54,10 @@ spec:
           description: CPeirStatus defines the observed state of CPeir
           properties:
             clusterStatus:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               enum:
               - Initial
               - NotInstallable
@@ -60,13 +66,30 @@ spec:
               - ValidationFailed
               - UpgradeAvailable
               type: string
+            clustercpu:
+              type: string
+            clustermemory:
+              type: string
+            clusterstorage:
+              type: string
+            cpreqcpu:
+              type: string
+            cpreqmemory:
+              type: string
+            cpreqstorage:
+              type: string
             installedFeatures:
               items:
                 type: string
               type: array
             statusMessages:
               type: string
+          required:
+          - clusterStatus
+          - statusMessages
           type: object
+      required:
+      - spec
       type: object
   version: v1alpha1
   versions:

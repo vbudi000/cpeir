@@ -4,4 +4,7 @@ metadata:
   name: cp4application
 spec:
   cptype: "cp4application"
-  cpversion: "4.0.1"
+  cpversion: "4.0"
+  cpfeatures:
+    - transadv
+    - kabanero

@@ -67,17 +67,24 @@ This repository is created this way:
 	// CPeirSpec defines the desired state of CPeir
 	type CPeirSpec struct {
 	        // +kubebuilder:validation:Enum=cp4application;cp4integration;cp4automation;cp4multicloud
-	        CPType string `json:"cptype"`
-	        CPVersion string `json:"cpversion"`
-	        CPFeatures []string `json:"cpfeatures"`
+          CPType string `json:"cptype"`
+          CPVersion string `json:"cpversion"`
+  				CPSizeType string `json:"cpsizetype",omitempty`
+          CPFeatures []string `json:"cpfeatures"`
 	}
 
 	// CPeirStatus defines the observed state of CPeir
 	type CPeirStatus struct {
 	        // +kubebuilder:validation:Enum=Initial;NotInstallable;ReadyToInstall;Installed;ValidationFailed;UpgradeAvailable
-	        ClusterStatus string `json:"clusterStatus"`
-	        StatusMessages string `json:"statusMessages"`
-	        InstalledFeatures []string `json:"installedFeatures"`
+          ClusterStatus string `json:"clusterStatus"`
+  				CPReqCPU resource.Quantity `json:"cpreqcpu"`
+  				CPReqMemory resource.Quantity `json:"cpreqmemory"`
+  				CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
+  				ClusterCPU resource.Quantity `json:"clustercpu"`
+  				ClusterMemory resource.Quantity `json:"clustermemory"`
+  				ClusterStorage resource.Quantity `json:"clusterstorage",omitempty`
+  				StatusMessages string `json:"statusMessages",omitempty`
+          InstalledFeatures []string `json:"installedFeatures,omitempty"`
 	}
 	```
 5. Generate kubernetes definition
@@ -94,44 +101,58 @@ This repository is created this way:
 	```
 
 	```yaml
-	        spec:
-	          description: CPeirSpec defines the desired state of CPeir
-	          required: ["cptype", "cpversion"]
-	          properties:
-	            cptype:
-	              type: "string"
-	              enum:
-	              - cp4application
-	              - cp4integration
-	              - cp4automation
-	              - cp4multicloud
-	            cpversion:
-	              type: "string"
-	            cpfeatures:
-	              type: "array"
-	              items:
-	                type: "string"
-	          type: object
-	        status:
-	          description: CPeirStatus defines the observed state of CPeir
-	          properties:
-	            installedFeatures:
-	              type: "array"
-	              items:
-	                type: "string"
-	            clusterStatus:
-	              type: "string"
-	              enum:
-	              - Initial
-	              - NotInstallable
-	              - ReadyToInstall
-	              - Installed
-	              - ValidationFailed
-	              - UpgradeAvailable
-	            statusMessages:
-	              type: "string"
-	          type: object
-	      type: object
+  spec:
+    description: CPeirSpec defines the desired state of CPeir
+    properties:
+      cpfeatures:
+        items:
+          type: string
+        type: array
+      cpsizetype:
+        type: string
+      cptype:
+        type: string
+      cpversion:
+        type: string
+    required:
+    - cpfeatures
+    - cptype
+    - cpversion
+    type: object
+  status:
+    description: CPeirStatus defines the observed state of CPeir
+    properties:
+      clusterStatus:
+        enum:
+        - Initial
+        - NotInstallable
+        - ReadyToInstall
+        - Installed
+        - ValidationFailed
+        - UpgradeAvailable
+        type: string
+      clustercpu:
+        type: string
+      clustermemory:
+        type: string
+      clusterstorage:
+        type: string
+      cpreqcpu:
+        type: string
+      cpreqmemory:
+        type: string
+      cpreqstorage:
+        type: string
+      installedFeatures:
+        items:
+          type: string
+        type: array
+      statusMessages:
+        type: string
+    required:
+    - clusterStatus
+    - statusMessages
+    type: object
 	```
 7. Modify the CR sample object:
 
@@ -140,13 +161,16 @@ This repository is created this way:
 	```
 
 	```yaml
-	apiVersion: cloud.ibm.com/v1alpha1
-	kind: CPeir
-	metadata:
-	  name: cp4application
-	spec:
-	  cptype: "cp4application"
-	  cpversion: "4.0.1"
+  apiVersion: cloud.ibm.com/v1alpha1
+  kind: CPeir
+  metadata:
+    name: cp4application
+  spec:
+    cptype: "cp4application"
+    cpversion: "4.0"
+    cpfeatures:
+      - transadv
+      - kabanero
 	```
 
 8. Modify the controller program:
@@ -155,40 +179,162 @@ This repository is created this way:
 	vi pkg/controller/cpeir/cpeir_controller.go
 	```
 
-	The current controller program creates a pod with the busybox which sleep for an hour.
-	**TODO**: More must be done here
+9. Create clusterrole.yaml and clusterrole_binding.yaml to add cluster-wide roles for the operator service account.
 
-	**TODO**: modify `deploy/role.yaml` to add more authority to inspect nodes
+  ```yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: cpeir
+  rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "watch", "list"]
+  ```
+  and
+  ```yaml
+  kind: ClusterRoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: cpeir
+  subjects:
+  - kind: ServiceAccount
+    name: cpeir
+    namespace: cpeir
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cpeir
+  ```
 
+10. Create configMap to host the requirement sizes.
 
+  ```yaml
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cpeir-config
+  data:
+    cp4application-4.0.yaml: |
+      requirements:
+        default:
+          cpu: 1
+          memory: 1Gi
+          pv: 3Gi
+    transadv-4.0.yaml: |
+      requirements:
+        default:
+          cpu: 2
+          memory: 3584Mi
+          pv: 8Gi
+    kabanero-4.0.yaml: |
+      requirements:
+        default:
+          cpu: 8
+          memory: 2048Mi
+          pv: 25Gi
+    cp4multicloud-1.2.0.yaml: |
+      requirements:
+        default:
+          cpu: 8000m
+          memory: 16Gi
+        development:
+          cpu: 8000m
+          memory: 16Gi
+          pv: 20Gi
+          disk: 100Gi
+        minimal:
+          cpu: 16
+          memory: 32Gi
+          pv: 20Gi
+          disk: 100Gi
+        standard:
+          cpu: 32
+          memory: 60Gi
+          pv: 20Gi
+          disk: 300Gi
+        enterprise:
+          cpu: 54
+          memory: 97Gi
+          pv: 60Gi
+          disk: 700Gi
+    icam-1.2.0.yaml: |
+      requirements:
+        development:
+          cpu: 10
+          memory: 32Gi
+          pv: 75Gi
+        minimal:
+          cpu: 35
+          memory: 55Gi
+          pv: 1200Gi
+        standard:
+          cpu: 90
+          memory: 180Gi
+          pv: 7000Gi
+        enterprise:
+          cpu: 105
+          memory: 230Gi
+          pv: 10500Gi
+    cam-1.2.0.yaml: |
+      requirements:
+        development:
+          cpu: 12
+          memory: 20Gi
+          pv: 65Gi
+        minimal:
+          cpu: 12
+          memory: 30Gi
+          pv: 65Gi
+        standard:
+          cpu: 15
+          memory: 48Gi
+          pv: 65Gi
+        enterprise:
+          cpu: 18
+          memory: 60Gi
+          pv: 65Gi
+    endpoint-1.2.0.yaml: |
+      requirements:
+        default:
+          cpu: 1325m
+          memory: 2390Mi
+    cp4multicloud-1.3.0.yaml: |
+      requirements:
+        default:
+          cpu: 3000m
+          memory: 10Gi
+  ```
 
-
-## When you are done
+## Deploying the operator
 
 1. Build your operator image:
 
-	```
-	operator-sdk build ibmcloudacademy/cpeir:v0.0.1
+	```bash
+	operator-sdk build <namespace>/cpeir:v0.0.1
 	```
 
 2. Push up the image to a docker repository
 
-	```
-	docker push ibmcloudacademy/cpeir:v0.0.1
+	```bash
+	docker push <namespace>/cpeir:v0.0.1
 	```
 
 3. Create OpenShift resources:
 
-	```
+	```bash
 	oc create -f deploy/crds/cloud.ibm.com_cpeirs_crd.yaml
 	oc create -f deploy/service_account.yaml
 	oc create -f deploy/role.yaml
 	oc create -f deploy/role_binding.yaml
+	oc create -f deploy/clusterrole.yaml
+	oc create -f deploy/clusterrole_binding.yaml
 	```
 
-4. Modify the operator.yaml with the image you push to docker repo
+4. Modify the operator.yaml with the image you push to docker repo; create configMap with configuration values
 
 	```
+	oc create -f deploy/configMap.yaml
 	oc create -f deploy/operator.yaml
 	```
 

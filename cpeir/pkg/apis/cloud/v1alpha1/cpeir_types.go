@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -14,6 +15,7 @@ type CPeirSpec struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
         CPType string `json:"cptype"`
         CPVersion string `json:"cpversion"`
+				CPSizeType string `json:"cpsizetype",omitempty`
         CPFeatures []string `json:"cpfeatures"`
 }
 
@@ -24,6 +26,12 @@ type CPeirStatus struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// +kubebuilder:validation:Enum=Initial;NotInstallable;ReadyToInstall;Installed;ValidationFailed;UpgradeAvailable
         ClusterStatus string `json:"clusterStatus"`
+				CPReqCPU resource.Quantity `json:"cpreqcpu"`
+				CPReqMemory resource.Quantity `json:"cpreqmemory"`
+				CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
+				ClusterCPU resource.Quantity `json:"clustercpu"`
+				ClusterMemory resource.Quantity `json:"clustermemory"`
+				ClusterStorage resource.Quantity `json:"clusterstorage",omitempty`
 				StatusMessages string `json:"statusMessages",omitempty`
         InstalledFeatures []string `json:"installedFeatures,omitempty"`
 }
@@ -37,7 +45,7 @@ type CPeir struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CPeirSpec   `json:"spec,omitempty"`
+	Spec   CPeirSpec   `json:"spec"`
 	Status CPeirStatus `json:"status,omitempty"`
 }
 

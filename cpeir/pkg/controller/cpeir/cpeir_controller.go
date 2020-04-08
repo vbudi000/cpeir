@@ -25,12 +25,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-type CPrequirements struct {
-	System struct {
-		Cpu string `yaml:"cpu,omitempty"`
-		Memory string `yaml:"memory,omitempty"`
-	}
+type System struct {
+	Cpu string `yaml:"cpu,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
+	PV string `yaml:"pv,omitempty"`
+	Disk string `yaml:"disk,omitempty"`
 }
+
+type CPrequirements struct {
+  Requirements map[string]System
+}
+
 var log = logf.Log.WithName("controller_cpeir")
 
 /**
@@ -124,7 +129,11 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// Start of the reconcile loop -
 	// Read configuration file
-	configFile := "/cfgdata/" + instance.Spec.CPType + "_" + instance.Spec.CPVersion +".yaml"
+	configType := instance.Spec.CPSizeType;
+	if configType == "" {
+		configType = "default"
+	}
+	configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
 	yamlFile, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		reqLogger.Info("yamlFile.Get err ", "Error", err)
@@ -135,10 +144,39 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		reqLogger.Info("Cannot un marshall file","Error", err)
   }
 
-  reqLogger.Info("CP Requirement", "CPR", c, "cpu", c.System.Cpu)
-	cpureq, err := resource.ParseQuantity(c.System.Cpu)
-	memreq, err := resource.ParseQuantity(c.System.Memory)
-	reqLogger.Info("CPU", "error", err, "cpu", cpureq, "memory", memreq)
+  reqLogger.Info("CP Requirement", "CPR", c, "configType", configType)
+	cpureq, err := resource.ParseQuantity(c.Requirements[configType].Cpu)
+	memreq, err := resource.ParseQuantity(c.Requirements[configType].Memory)
+	pvreq,  err := resource.ParseQuantity(c.Requirements[configType].PV)
+	reqLogger.Info("CPU", "error", err, "cpu", cpureq, "memory", memreq, "Features", instance.Spec.CPFeatures)
+
+	/* Adding requriement calculated from sub-features */
+	if len(instance.Spec.CPFeatures) > 0 {
+		for _, feature := range instance.Spec.CPFeatures {
+			reqLogger.Info("Processing feature", "feature", feature)
+			yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + feature + "-" + instance.Spec.CPVersion +".yaml")
+			if err == nil {
+				var cf CPrequirements
+				err = yaml.Unmarshal(yamlFeatureFile, &cf)
+				if err != nil {
+					reqLogger.Info("Cannot un marshall file","Error", err, "File", feature + "-" + instance.Spec.CPVersion)
+				}
+				reqLogger.Info("CP Feature Requirement", "CPR", cf)
+				fcpureq, err := resource.ParseQuantity(cf.Requirements[configType].Cpu)
+				if err == nil {
+					cpureq.Add(fcpureq)
+				}
+				fmemreq, err := resource.ParseQuantity(cf.Requirements[configType].Memory)
+				if err == nil {
+					memreq.Add(fmemreq)
+				}
+				fpvreq,  err := resource.ParseQuantity(cf.Requirements[configType].PV)
+				if err == nil {
+					pvreq.Add(fpvreq)
+				}
+			}
+		}
+	}
 
 	// Collect nodes information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
@@ -154,7 +192,6 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	if len(nodes.Items) > 0 {
 
 		for _, node := range nodes.Items {
-
 			acpu = node.Status.Allocatable.Cpu()
 			amem = node.Status.Allocatable.Memory()
 
@@ -171,6 +208,12 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		instance.Status.ClusterStatus = "ReadyToInstall"
 	}
 	instance.Status.StatusMessages = "Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
+	instance.Status.CPReqCPU = cpureq
+	instance.Status.CPReqMemory = memreq
+	instance.Status.CPReqStorage = pvreq
+	instance.Status.ClusterCPU = *totCpu
+	instance.Status.ClusterMemory = *totMemory
+
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		reqLogger.Error(err, "Status update failed")
@@ -180,5 +223,5 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	reqLogger.Info("status","status",instance.Status.ClusterStatus)
 	reqLogger.Info("Finished reconcile")
 	// Recheck status every minutes - may need to revisit
-	return reconcile.Result{RequeueAfter: time.Second*60}, nil
+	return reconcile.Result{RequeueAfter: time.Second*300}, nil
 }
