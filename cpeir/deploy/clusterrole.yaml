@@ -6,3 +6,6 @@ rules:
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "watch", "list"]
+- apiGroups: ["config.openshift.io"]
+  resources: ["clusterversions"]
+  verbs: ["get", "list"]

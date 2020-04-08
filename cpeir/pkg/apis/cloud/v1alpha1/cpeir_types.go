@@ -29,9 +29,12 @@ type CPeirStatus struct {
 				CPReqCPU resource.Quantity `json:"cpreqcpu"`
 				CPReqMemory resource.Quantity `json:"cpreqmemory"`
 				CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
-				ClusterCPU resource.Quantity `json:"clustercpu"`
-				ClusterMemory resource.Quantity `json:"clustermemory"`
-				ClusterStorage resource.Quantity `json:"clusterstorage",omitempty`
+				ClusterCPU resource.Quantity `json:"clusterCpu"`
+				ClusterMemory resource.Quantity `json:"clusterMemory"`
+				ClusterStorage resource.Quantity `json:"clusterStorage",omitempty`
+				ClusterArch string `json:"clusterArch,omitempty"`
+				ClusterWorkerNum int `json:"clusterWorkerNum,omitempty"`
+				ClusterKubelet string `json:"clusterVersion,omitempty"`
 				StatusMessages string `json:"statusMessages",omitempty`
         InstalledFeatures []string `json:"installedFeatures,omitempty"`
 }
