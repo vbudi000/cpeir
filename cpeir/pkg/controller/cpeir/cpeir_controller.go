@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 	"strconv"
+	"net/http"
 	"io/ioutil"
 	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
 	//corev1 "k8s.io/api/core/v1"
@@ -94,6 +95,14 @@ type ReconcileCPeir struct {
 	scheme *runtime.Scheme
 }
 
+func connected() (ok bool) {
+    _, err := http.Get("http://clients3.google.com/generate_204")
+    if err != nil {
+        return false
+    }
+    return true
+}
+
 // Reconcile reads that state of the cluster for a CPeir object and makes changes based on the state read
 // and what is in the CPeir.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
@@ -181,6 +190,11 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 	}
 
+	if !connected() {
+		reqLogger.Info("no internet")
+	} else {
+		reqLogger.Info("connected =-=-=-=-=-=-=-=")
+	}
 	// Collect cluster information config.openshift.io/v1 (clientconfigv1.ClusterVersionsGetter)
 	var clientConfigV1 clientconfigv1.ConfigV1Interface
   clientConfigV1, err = clientconfigv1.NewForConfig(config)
