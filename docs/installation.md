@@ -14,10 +14,10 @@ To deploy this operator, you need the following:
 
 1. Clone the git repository
 
-  ```bash
-  git clone https://github.ibm.com/CASE/cpeir
-  cd cpeir/cpeir
-  ```
+	```bash
+	git clone https://github.ibm.com/CASE/cpeir
+	cd cpeir/cpeir
+	```
 
 2. Build your operator image:
 
@@ -34,15 +34,15 @@ To deploy this operator, you need the following:
 4. Create OpenShift resources:
 
 	```bash
-  oc login api.<cluster>.<domain>:6443
-  oc new-project cpeir
+	oc login api.<cluster>.<domain>:6443
+	oc new-project cpeir
 	oc create -f deploy/crds/cloud.ibm.com_cpeirs_crd.yaml
 	oc create -f deploy/service_account.yaml
 	oc create -f deploy/role.yaml
 	oc create -f deploy/role_binding.yaml
 	oc create -f deploy/clusterrole.yaml
 	oc create -f deploy/clusterrole_binding.yaml
-  oc create -f deploy/configMap.yaml
+	oc create -f deploy/configMap.yaml
 	```
 
 4. Modify the operator.yaml with the image name you push to docker repo; create configMap with configuration values
