@@ -16,6 +16,7 @@ to accommodate the whole lifecycle management of IBM Cloud Pak, including:
 The documentation for this tool contains the following:
 
 - [Technical Design](docs/design.md)
+
     Older docs:
     - [Technical Design](docs/design/technical-design.md)
     - [Minimum Viable Product (MVP) Iteration 1](docs/design/mvp01.md)
