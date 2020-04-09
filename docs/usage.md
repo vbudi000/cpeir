@@ -11,24 +11,24 @@ To use this operator, you need the following:
 
 1. Build a YAML file for the CPeir object. The YAML must include the CloudPak type, version, installation type and list of features that are expected, the following is a sample YAML for Cloud Pak for MultiCloud Management 1.2:
 
-  ```yaml
-  apiVersion: cloud.ibm.com/v1alpha1
-  kind: CPeir
-  metadata:
-    name: cp4multicloud
-  spec:
-    cptype: "cp4multicloud"
-    cpversion: "1.2"
-    cpsizetype: "development"
-    cpfeatures:
-      - icam
-  ```
+	```yaml
+	apiVersion: cloud.ibm.com/v1alpha1
+	kind: CPeir
+	metadata:
+	  name: cp4multicloud
+	spec:
+	  cptype: "cp4multicloud"
+	  cpversion: "1.2"
+	  cpsizetype: "development"
+	  cpfeatures:
+	    - icam
+	```
 
 2. Load the yaml to OpenShift:
 
-  ```bash
-  oc create -f cp4mcm.yaml
-  ```
+	```bash
+	oc create -f cp4mcm.yaml
+	```
 
 2. The operator will perform its evaluation to your cluster and compare that to the configMap that it has and deliver its verdict in a couple of seconds. Check the newly created object:
 
@@ -74,4 +74,4 @@ To use this operator, you need the following:
   Events:  <none>
 	```
 
-  As indicated by Cluster Status field, the CloudPak can then be installed. 
+  As indicated by Cluster Status field, the CloudPak can then be installed.
