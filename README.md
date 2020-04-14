@@ -23,3 +23,4 @@ The documentation for this tool contains the following:
 - [Tool development guide](docs/development.md)
 - [Installation and usage](docs/installation.md)
 - [Usage](docs/usage.md)
+- [To do list](docs/todo.md)
