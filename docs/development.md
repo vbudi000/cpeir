@@ -100,62 +100,62 @@ This repository is created this way:
 	```
 	operator-sdk generate crds
 	vi deploy/crds/cloud.ibm.com_cpeir_crd.yaml
-	```
+  ```
 
 	```yaml
-  spec:
-    description: CPeirSpec defines the desired state of CPeir
-    properties:
-      cpfeatures:
-        items:
-          type: string
-        type: array
-      cpsizetype:
-        type: string
-      cptype:
-        type: string
-      cpversion:
-        type: string
-    required:
-    - cpfeatures
-    - cptype
-    - cpversion
-    type: object
-  status:
-    description: CPeirStatus defines the observed state of CPeir
-    properties:
-      clusterStatus:
-        enum:
-        - Initial
-        - NotInstallable
-        - ReadyToInstall
-        - Installed
-        - ValidationFailed
-        - UpgradeAvailable
-        type: string
-      clustercpu:
-        type: string
-      clustermemory:
-        type: string
-      clusterstorage:
-        type: string
-      cpreqcpu:
-        type: string
-      cpreqmemory:
-        type: string
-      cpreqstorage:
-        type: string
-      installedFeatures:
-        items:
-          type: string
-        type: array
-      statusMessages:
-        type: string
-    required:
-    - clusterStatus
-    - statusMessages
-    type: object
+	spec:
+	  description: CPeirSpec defines the desired state of CPeir
+	  properties:
+	    cpfeatures:
+	      items:
+	        type: string
+	      type: array
+	    cpsizetype:
+	      type: string
+	    cptype:
+	      type: string
+	    cpversion:
+	      type: string
+	  required:
+	  - cptype
+	  - cpversion
+	  type: object
+	status:
+	  description: CPeirStatus defines the observed state of CPeir
+	  properties:
+	    clusterStatus:
+	      enum:
+	      - Initial
+	      - NotInstallable
+	      - ReadyToInstall
+	      - Installed
+	      - ValidationFailed
+	      - UpgradeAvailable
+	      type: string
+	    clustercpu:
+	      type: string
+	    clustermemory:
+	      type: string
+	    clusterstorage:
+	      type: string
+	    cpreqcpu:
+	      type: string
+	    cpreqmemory:
+	      type: string
+	    cpreqstorage:
+	      type: string
+	    installedFeatures:
+	      items:
+	        type: string
+	      type: array
+	    statusMessages:
+	      type: string
+	  required:
+	  - clusterStatus
+	  - statusMessages
+	  type: object
 	```
+
 7. Modify the CR sample object:
 
 	```
