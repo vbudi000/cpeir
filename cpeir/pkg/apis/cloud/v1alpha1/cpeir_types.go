@@ -24,18 +24,37 @@ type CPeirStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	// +kubebuilder:validation:Enum=Initial;NotInstallable;ReadyToInstall;Installed;ValidationFailed;UpgradeAvailable
-        ClusterStatus string `json:"clusterStatus"`
+
+  			// Status of the CloudPak in the cluster
+				// +kubebuilder:validation:Enum=Initial;NotInstallable;ReadyToInstall;Installed;ValidationFailed;UpgradeAvailable
+        CPStatus string `json:"CPStatus"`
+				// CPU installation requirement
 				CPReqCPU resource.Quantity `json:"cpreqcpu"`
+				// Memory installation requirement
 				CPReqMemory resource.Quantity `json:"cpreqmemory"`
+				// Storage (PVC) installation requirement
 				CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
+				// Allocatable CPU in worker nodes
 				ClusterCPU resource.Quantity `json:"clusterCpu"`
+				// Allocatable memory in worker nodes
 				ClusterMemory resource.Quantity `json:"clusterMemory"`
+				// Available Storage - TBD - now showing 0
 				ClusterStorage resource.Quantity `json:"clusterStorage",omitempty`
+				// Worker node architecture
 				ClusterArch string `json:"clusterArch,omitempty"`
+				// Number of Worker nodes
 				ClusterWorkerNum int `json:"clusterWorkerNum,omitempty"`
+				// Worker node kubelet version
 				ClusterKubelet string `json:"clusterVersion,omitempty"`
+				// OpenShift version
+				OCPVersion string `json:"ocpVersion",omitempty`
+				// access to cp.icr.io
+				OnlineInstall bool `json:"onlineInstall,omitempty"`
+				// available image registry space - TBD - not working right now - compilation problem
+				OfflineInstall bool `json:"offlineInstall,omitempty"`
+				// Miscellaneous messages from the operator run
 				StatusMessages string `json:"statusMessages",omitempty`
+				// List of installed features as investigated - TBD - now empty
         InstalledFeatures []string `json:"installedFeatures,omitempty"`
 }
 

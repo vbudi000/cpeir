@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"net/http"
 	"io/ioutil"
+	//"io"
 	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
 	//corev1 "k8s.io/api/core/v1"
 	"gopkg.in/yaml.v2"
@@ -15,7 +16,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	//configv1 "github.com/openshift/api/config/v1"
+	v1 "k8s.io/api/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	//remotecommand "k8s.io/client-go/tools/remotecommand"
+	scheme "k8s.io/client-go/kubernetes/scheme"
+
+	//lientimageregistryv1 "github.com/openshift/cluster-image-registry-operator/pkg/generated/clientset/versioned/typed/imageregistry/v1"
+	//clientimageregistryv1 "github.com/openshift/client-go/imageregistry/clientset/versioned/typed/imageregistry/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -96,7 +104,7 @@ type ReconcileCPeir struct {
 }
 
 func connected() (ok bool) {
-    _, err := http.Get("http://clients3.google.com/generate_204")
+    _, err := http.Get("https://cp.icr.io")
     if err != nil {
         return false
     }
@@ -113,7 +121,6 @@ func connected() (ok bool) {
 func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling CPeir")
-
 	// Fetch the CPeir instance
 	instance := &cloudv1alpha1.CPeir{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -190,21 +197,70 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 	}
 
-	if !connected() {
-		reqLogger.Info("no internet")
-	} else {
-		reqLogger.Info("connected =-=-=-=-=-=-=-=")
-	}
 	// Collect cluster information config.openshift.io/v1 (clientconfigv1.ClusterVersionsGetter)
 	var clientConfigV1 clientconfigv1.ConfigV1Interface
   clientConfigV1, err = clientconfigv1.NewForConfig(config)
 
 	cver, err := clientConfigV1.ClusterVersions().Get("version", metav1.GetOptions{})
+	var ocpVer string
+	if err != nil {
+		reqLogger.Info(err.Error())
+		ocpVer = ""
+	} else {
+		ocpVer = cver.Status.Desired.Version
+	}
+
+	// image registry information - have not been able to get this part to compile
+	pods, err := clientset.CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+	if err != nil {
+		reqLogger.Info(err.Error())
+	}
+	podName := ""
+	for _, pod := range pods.Items {
+		podName = pod.Name
+	}
+	reqLogger.Info("getting pod name", "podname", podName)
+	coreClient, err := corev1client.NewForConfig(config)
+	if err != nil {
+		reqLogger.Info(err.Error())
+	}
+	reqexec := coreClient.RESTClient().
+		Post().
+		Resource("pods").
+		Name(podName).
+		Namespace("openshift-image-registry").
+		SubResource("exec")
+	reqexec.VersionedParams(&v1.PodExecOptions{
+				Command: []string{"/bin/bash", "-c", "df -k"},
+				Stdin:   false,
+				Stdout:  true,
+				Stderr:  true,
+				TTY:     false,
+		}, scheme.ParameterCodec)
+	reqLogger.Info("regexec.url", "RU", reqexec.URL())
+/*
+	var buf io.Writer
+	var errBuf io.Writer
+
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", reqexec.URL())
+	reqLogger.Info("run remote command","exec",exec)
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin: nil,
+		Stdout: buf,
+		Stderr: errBuf,
+		Tty: false,
+	})
 	if err != nil {
 		reqLogger.Info(err.Error())
 	} else {
-		reqLogger.Info("CVER", "cv", cver.Status.Desired.Version)
-	}
+		reqLogger.Info("RunRemote", "out", buf, "err", errBuf)
+	} */
+	//	var oStr string
+	//	var eStr string
+	//	oNum, err := io.WriteString(buf, oStr)
+	//	eNum, err := io.WriteString(buf, eStr)
+	//	reqLogger.Info("request result","STDOUT", oStr, "STDERR", eStr, "oNum", oNum, "eNum", eNum, "err", err.Error())
+	//}
 
 	// Collect nodes information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
@@ -234,9 +290,9 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
   reqLogger.Info("total available capacity:", "CPU", totCpu.MilliValue(), "Memory", totMemory.Value())
 
   if (totCpu.Cmp(cpureq)<0) && (totMemory.Cmp(memreq)<0) {
-		instance.Status.ClusterStatus = "NotInstallable"
+		instance.Status.CPStatus = "NotInstallable"
 	} else {
-		instance.Status.ClusterStatus = "ReadyToInstall"
+		instance.Status.CPStatus = "ReadyToInstall"
 	}
 	instance.Status.StatusMessages = "Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
 	instance.Status.CPReqCPU = cpureq
@@ -247,6 +303,11 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	instance.Status.ClusterArch = nodeArch
 	instance.Status.ClusterWorkerNum = len(nodes.Items)
 	instance.Status.ClusterKubelet = kubeVer
+	instance.Status.OCPVersion = ocpVer
+	instance.Status.OnlineInstall = connected()
+	// Set to false for now - compilation problem
+	instance.Status.OfflineInstall = false
+
 
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
@@ -254,7 +315,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info("status","status",instance.Status.ClusterStatus)
+	reqLogger.Info("status","status",instance.Status.CPStatus)
 	reqLogger.Info("Finished reconcile")
 	// Recheck status every minutes - may need to revisit
 	return reconcile.Result{RequeueAfter: time.Second*300}, nil
