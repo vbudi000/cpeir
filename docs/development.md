@@ -99,7 +99,7 @@ This repository is created this way:
 
 	```
 	operator-sdk generate crds
-	vi deploy/crds/cloud.ibm.com_cpeir_crd.yaml
+  vi deploy/crds/cloud.ibm.com_cpeir_crd.yaml
   ```
 
 	```yaml
