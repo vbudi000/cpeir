@@ -38,25 +38,22 @@ spec:
             cpsizetype:
               type: string
             cptype:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: string
             cpversion:
               type: string
           required:
-          - cpfeatures
-          - cpsizetype
           - cptype
           - cpversion
           type: object
         status:
           description: CPeirStatus defines the observed state of CPeir
           properties:
-            clusterArch:
-              type: string
-            clusterCpu:
-              type: string
-            clusterMemory:
-              type: string
-            clusterStatus:
+            CPStatus:
+              description: Status of the CloudPak in the cluster
               enum:
               - Initial
               - NotInstallable
@@ -65,32 +62,61 @@ spec:
               - ValidationFailed
               - UpgradeAvailable
               type: string
+            clusterArch:
+              description: Worker node architecture
+              type: string
+            clusterCpu:
+              description: Allocatable CPU in worker nodes
+              type: string
+            clusterMemory:
+              description: Allocatable memory in worker nodes
+              type: string
             clusterStorage:
+              description: Available Storage - TBD - now showing 0
               type: string
             clusterVersion:
+              description: Worker node kubelet version
               type: string
             clusterWorkerNum:
+              description: Number of Worker nodes
               type: integer
             cpreqcpu:
+              description: CPU installation requirement
               type: string
             cpreqmemory:
+              description: Memory installation requirement
               type: string
             cpreqstorage:
+              description: Storage (PVC) installation requirement
               type: string
             installedFeatures:
+              description: List of installed features as investigated - TBD - now
+                empty
               items:
                 type: string
               type: array
+            ocpVersion:
+              description: OpenShift version
+              type: string
+            offlineInstall:
+              description: available image registry space - TBD - not working right
+                now - compilation problem
+              type: boolean
+            onlineInstall:
+              description: access to cp.icr.io
+              type: boolean
             statusMessages:
+              description: Miscellaneous messages from the operator run
               type: string
           required:
+          - CPStatus
           - clusterCpu
           - clusterMemory
-          - clusterStatus
           - clusterStorage
           - cpreqcpu
           - cpreqmemory
           - cpreqstorage
+          - ocpVersion
           - statusMessages
           type: object
       required:

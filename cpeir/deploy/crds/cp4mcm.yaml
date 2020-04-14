@@ -4,7 +4,7 @@ metadata:
   name: cp4multicloud
 spec:
   cptype: "cp4multicloud"
-  cpversion: "1.2"
+  cpversion: "1.2.0"
   cpsizetype: "development"
   cpfeatures:
     - icam

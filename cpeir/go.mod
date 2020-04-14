@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20190923180330-3b6373338c9b
+	github.com/openshift/cluster-image-registry-operator v0.0.0-20190125144530-cf9dbe900efc
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.2.4

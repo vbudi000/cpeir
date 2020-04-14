@@ -15,7 +15,6 @@ The first iteration will include pre-requisite checker for IBM Cloud Pak. The ch
 - Installation requirement (Iteration 1) - TBD
   - Internet connection to IBM Entitled Registry (online install)
   - Registry space to load images (offline install)
-  - Cluster network speed (?)
 - Storage (Iteration 2)
   - Type
   - Size
@@ -272,11 +271,66 @@ status:
       regionEndpoint: ""
   storageManaged: true
 ```
+or an example with pvc:
 
+```yaml
+apiVersion: imageregistry.operator.openshift.io/v1
+kind: Config
+metadata:
+  creationTimestamp: "2020-04-09T22:13:53Z"
+  finalizers:
+  - imageregistry.operator.openshift.io/finalizer
+  generation: 4
+  name: cluster
+  resourceVersion: "20502"
+  selfLink: /apis/imageregistry.operator.openshift.io/v1/configs/cluster
+  uid: 11c5ff9c-43ee-406f-b055-02b5a1baf94a
+spec:
+  defaultRoute: false
+  disableRedirect: false
+  httpSecret: 6ea95ae10eba9f08f92563857f92f155bb027b5b52d76f815d7aa0eb478015ade1b889b1d2481008ec00441a855cf9e5d60a8fb8ae4e235887cd1ce6a79eb7e5
+  logging: 2
+  managementState: Managed
+  proxy:
+    http: ""
+    https: ""
+    noProxy: ""
+  readOnly: false
+  replicas: 1
+  requests:
+    read:
+      maxInQueue: 0
+      maxRunning: 0
+      maxWaitInQueue: 0s
+    write:
+      maxInQueue: 0
+      maxRunning: 0
+      maxWaitInQueue: 0s
+  storage:
+    pvc:
+      claim: image-registry-storage
+```
+
+```
+root@utility:/var/www/html# oc exec -n openshift-image-registry image-registry-6d75cc7975-jw7zn -- df -k
+Filesystem                           1K-blocks     Used Available Use% Mounted on
+overlay                              209163244  8716024 200447220   5% /
+tmpfs                                    65536        0     65536   0% /dev
+tmpfs                                 16468080        0  16468080   0% /sys/fs/cgroup
+shm                                      65536        0     65536   0% /dev/shm
+tmpfs                                 16468080     5300  16462780   1% /etc/passwd
+172.16.53.250:/data/registry         123329280 15993088 101028352  14% /registry
+tmpfs                                 16468080        8  16468072   1% /etc/secrets
+/dev/mapper/coreos-luks-root-nocrypt 209163244  8716024 200447220   5% /etc/hosts
+tmpfs                                 16468080       24  16468056   1% /run/secrets/kubernetes.io/serviceaccount
+tmpfs                                 16468080        0  16468080   0% /proc/acpi
+tmpfs                                 16468080        0  16468080   0% /proc/scsi
+tmpfs                                 16468080        0  16468080   0% /sys/firmware
+```
 
 ## Iteration 2
 
-In the iteration 2, more detailed pre-requisite will be checked, this include: storage requirements and software incompatibility checks. 
+In the iteration 2, more detailed pre-requisite will be checked, this include: storage requirements and software incompatibility checks.
 
 
 ### Storage check
