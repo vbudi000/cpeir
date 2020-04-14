@@ -163,16 +163,16 @@ This repository is created this way:
 	```
 
 	```yaml
-  apiVersion: cloud.ibm.com/v1alpha1
-  kind: CPeir
-  metadata:
-    name: cp4application
-  spec:
-    cptype: "cp4application"
-    cpversion: "4.0"
-    cpfeatures:
-      - transadv
-      - kabanero
+	apiVersion: cloud.ibm.com/v1alpha1
+	kind: CPeir
+	metadata:
+	  name: cp4application
+	spec:
+	  cptype: "cp4application"
+	  cpversion: "4.0"
+	  cpfeatures:
+	    - transadv
+	    - kabanero
 	```
 
 8. Modify the controller program:
