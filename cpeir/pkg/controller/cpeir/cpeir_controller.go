@@ -16,12 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	//configv1 "github.com/openshift/api/config/v1"
-	v1 "k8s.io/api/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	//corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-	//remotecommand "k8s.io/client-go/tools/remotecommand"
-	scheme "k8s.io/client-go/kubernetes/scheme"
-
 	//lientimageregistryv1 "github.com/openshift/cluster-image-registry-operator/pkg/generated/clientset/versioned/typed/imageregistry/v1"
 	//clientimageregistryv1 "github.com/openshift/client-go/imageregistry/clientset/versioned/typed/imageregistry/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -211,56 +207,38 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// image registry information - have not been able to get this part to compile
+	registryPod := ""
+	registryType := "pvc"
+
 	pods, err := clientset.CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
 	if err != nil {
 		reqLogger.Info(err.Error())
 	}
-	podName := ""
+	// assuming OpenShift always have image-registry
 	for _, pod := range pods.Items {
-		podName = pod.Name
+		registryPod = pod.Name
+		podContainers := pod.Spec.Containers
+		for _, container := range podContainers {
+			for _, envvar := range container.Env {
+				if envvar.Name == "REGISTRY_STORAGE" {
+					registryType = envvar.Value
+					reqLogger.Info("registry type", "type" , registryType, "name", registryPod)
+				}
+			}
+		}
 	}
-	reqLogger.Info("getting pod name", "podname", podName)
-	coreClient, err := corev1client.NewForConfig(config)
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	reqexec := coreClient.RESTClient().
-		Post().
-		Resource("pods").
-		Name(podName).
-		Namespace("openshift-image-registry").
-		SubResource("exec")
-	reqexec.VersionedParams(&v1.PodExecOptions{
-				Command: []string{"/bin/bash", "-c", "df -k"},
-				Stdin:   false,
-				Stdout:  true,
-				Stderr:  true,
-				TTY:     false,
-		}, scheme.ParameterCodec)
-	reqLogger.Info("regexec.url", "RU", reqexec.URL())
-/*
-	var buf io.Writer
-	var errBuf io.Writer
 
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", reqexec.URL())
-	reqLogger.Info("run remote command","exec",exec)
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin: nil,
-		Stdout: buf,
-		Stderr: errBuf,
-		Tty: false,
-	})
-	if err != nil {
-		reqLogger.Info(err.Error())
-	} else {
-		reqLogger.Info("RunRemote", "out", buf, "err", errBuf)
-	} */
-	//	var oStr string
-	//	var eStr string
-	//	oNum, err := io.WriteString(buf, oStr)
-	//	eNum, err := io.WriteString(buf, eStr)
-	//	reqLogger.Info("request result","STDOUT", oStr, "STDERR", eStr, "oNum", oNum, "eNum", eNum, "err", err.Error())
-	//}
+	if (registryType == "pvc") {
+		// retrieve PVC size
+		pvcs, err := clientset.CoreV1().PersistentVolumeClaims("openshift-image-registry").List(metav1.ListOptions{FieldSelector: "metadata.name=image-registry-storage"})
+		if err != nil {
+			reqLogger.Info(err.Error())
+		}
+	  for _, pvc := range pvcs.Items {
+			//size := pvc.Status.Capacity.Storage()
+			reqLogger.Info("pvc registry size", "size", pvc)
+		}
+	}
 
 	// Collect nodes information
 	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
