@@ -16,6 +16,8 @@ type CPeirSpec struct {
         CPType string `json:"cptype"`
         CPVersion string `json:"cpversion"`
 				CPSizeType string `json:"cpsizetype",omitempty`
+				// +kubebuilder:validation:Enum=Check;Install;HealthCheck;Upgrade
+				Action string `json:"action"`
         CPFeatures []string `json:"cpfeatures"`
 }
 
@@ -50,7 +52,7 @@ type CPeirStatus struct {
 				OCPVersion string `json:"ocpVersion",omitempty`
 				// access to cp.icr.io
 				OnlineInstall bool `json:"onlineInstall,omitempty"`
-				// available image registry space - TBD - not working right now - compilation problem
+				// available image registry space - 
 				OfflineInstall bool `json:"offlineInstall,omitempty"`
 				// Miscellaneous messages from the operator run
 				StatusMessages string `json:"statusMessages",omitempty`

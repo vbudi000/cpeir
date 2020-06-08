@@ -3,24 +3,19 @@ package cpeir
 import (
 	"context"
 	"time"
-	"strconv"
 	"net/http"
 	"io/ioutil"
-	//"io"
-	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
-	//corev1 "k8s.io/api/core/v1"
-	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	//configv1 "github.com/openshift/api/config/v1"
-	//corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-	//lientimageregistryv1 "github.com/openshift/cluster-image-registry-operator/pkg/generated/clientset/versioned/typed/imageregistry/v1"
-	//clientimageregistryv1 "github.com/openshift/client-go/imageregistry/clientset/versioned/typed/imageregistry/v1"
+	"strings"
+	"encoding/json"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"gopkg.in/yaml.v2"
+	//"strconv"
+	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
+	//appsv1 "k8s.io/api/apps/v1"
+	//corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -41,6 +36,27 @@ type System struct {
 
 type CPrequirements struct {
   Requirements map[string]System
+}
+
+type capacity struct {
+	TotCpu resource.Quantity `json:totcpu`
+	TotMem resource.Quantity `json:totmem`
+	MaxCpu resource.Quantity `json:maxcpu`
+	MaxMem resource.Quantity `json:maxmem`
+	Arch   string `json:arch`
+	Kubelet string `json:kubever`
+	NumNode int   `json:numnode`
+}
+
+type version struct {
+	OCPVersion string `json:version`
+	UpgradeChannel string `json:channel`
+}
+
+type registry struct {
+	Configured bool `json:configured`
+	External bool `json:external`
+	Capacity resource.Quantity `json:capacity`
 }
 
 var log = logf.Log.WithName("controller_cpeir")
@@ -131,18 +147,6 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-
-	// Start of the reconcile loop -
 	// Read configuration file
 	configType := instance.Spec.CPSizeType;
 	if configType == "" {
@@ -152,14 +156,14 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	yamlFile, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		reqLogger.Info("yamlFile.Get err ", "Error", err)
-  }
+	}
 	var c CPrequirements
-  err = yaml.Unmarshal(yamlFile, &c)
-  if err != nil {
+	err = yaml.Unmarshal(yamlFile, &c)
+	if err != nil {
 		reqLogger.Info("Cannot un marshall file","Error", err)
-  }
+	}
 
-  reqLogger.Info("CP Requirement", "CPR", c, "configType", configType)
+	reqLogger.Info("CP Requirement", "CPR", c, "configType", configType)
 	cpureq, err := resource.ParseQuantity(c.Requirements[configType].Cpu)
 	memreq, err := resource.ParseQuantity(c.Requirements[configType].Memory)
 	pvreq,  err := resource.ParseQuantity(c.Requirements[configType].PV)
@@ -192,100 +196,43 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		}
 	}
+	var capjson capacity
+	var regjson registry
+	var verjson version
 
-	// Collect cluster information config.openshift.io/v1 (clientconfigv1.ClusterVersionsGetter)
-	var clientConfigV1 clientconfigv1.ConfigV1Interface
-  clientConfigV1, err = clientconfigv1.NewForConfig(config)
+  rcapacity, err := r.getRest("capacity","")
+	json.Unmarshal(rcapacity, &capjson)
+	reqLogger.Info(string(rcapacity),"json",capjson)
 
-	cver, err := clientConfigV1.ClusterVersions().Get("version", metav1.GetOptions{})
-	var ocpVer string
-	if err != nil {
-		reqLogger.Info(err.Error())
-		ocpVer = ""
-	} else {
-		ocpVer = cver.Status.Desired.Version
-	}
+	rregistry, err := r.getRest("registry","")
+	json.Unmarshal(rregistry,&regjson)
+	reqLogger.Info(string(rregistry),"json",regjson)
 
-	// image registry information - have not been able to get this part to compile
-	registryPod := ""
-	registryType := "pvc"
+	rversion, err := r.getRest("version", "")
+	json.Unmarshal(rversion,&verjson)
+	reqLogger.Info(string(rversion),"json",verjson)
 
-	pods, err := clientset.CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	// assuming OpenShift always have image-registry
-	for _, pod := range pods.Items {
-		registryPod = pod.Name
-		podContainers := pod.Spec.Containers
-		for _, container := range podContainers {
-			for _, envvar := range container.Env {
-				if envvar.Name == "REGISTRY_STORAGE" {
-					registryType = envvar.Value
-					reqLogger.Info("registry type", "type" , registryType, "name", registryPod)
-				}
-			}
-		}
-	}
-
-	if (registryType == "pvc") {
-		// retrieve PVC size
-		pvcs, err := clientset.CoreV1().PersistentVolumeClaims("openshift-image-registry").List(metav1.ListOptions{FieldSelector: "metadata.name=image-registry-storage"})
-		if err != nil {
-			reqLogger.Info(err.Error())
-		}
-	  for _, pvc := range pvcs.Items {
-			//size := pvc.Status.Capacity.Storage()
-			reqLogger.Info("pvc registry size", "size", pvc)
-		}
-	}
-
-	// Collect nodes information
-	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	reqLogger.Info("There are nodes in the cluster\n", "Node number", len(nodes.Items))
-	totCpu := resource.NewQuantity(0,resource.DecimalSI);
-	totMemory := resource.NewQuantity(0,resource.BinarySI);
-  var acpu *resource.Quantity
-	var amem *resource.Quantity
-	var nodeArch string;
-	var kubeVer string;
-
-	if len(nodes.Items) > 0 {
-
-		for _, node := range nodes.Items {
-			acpu = node.Status.Allocatable.Cpu()
-			amem = node.Status.Allocatable.Memory()
-			nodeArch = node.Status.NodeInfo.Architecture
-			kubeVer  = node.Status.NodeInfo.KubeletVersion
-			totCpu.Add(*acpu)
-			totMemory.Add(*amem)
-		}
-	}
-
-  reqLogger.Info("total available capacity:", "CPU", totCpu.MilliValue(), "Memory", totMemory.Value())
-
-  if (totCpu.Cmp(cpureq)<0) && (totMemory.Cmp(memreq)<0) {
-		instance.Status.CPStatus = "NotInstallable"
-	} else {
-		instance.Status.CPStatus = "ReadyToInstall"
-	}
-	instance.Status.StatusMessages = "Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
+	//if (totCpu.Cmp(cpureq)<0) && (totMemory.Cmp(memreq)<0) {
+	instance.Status.CPStatus = "Initial"
+	//} else {
+	//	instance.Status.CPStatus = "ReadyToInstall"
+	//}
+	instance.Status.StatusMessages = " NO " //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
 	instance.Status.CPReqCPU = cpureq
 	instance.Status.CPReqMemory = memreq
 	instance.Status.CPReqStorage = pvreq
-	instance.Status.ClusterCPU = *totCpu
-	instance.Status.ClusterMemory = *totMemory
-	instance.Status.ClusterArch = nodeArch
-	instance.Status.ClusterWorkerNum = len(nodes.Items)
-	instance.Status.ClusterKubelet = kubeVer
-	instance.Status.OCPVersion = ocpVer
+	instance.Status.ClusterCPU = capjson.TotCpu
+	instance.Status.ClusterMemory = capjson.TotMem
+	instance.Status.ClusterArch = capjson.Arch
+	instance.Status.ClusterWorkerNum = capjson.NumNode
+	instance.Status.ClusterKubelet = capjson.Kubelet
+	instance.Status.OCPVersion = verjson.OCPVersion
 	instance.Status.OnlineInstall = connected()
 	// Set to false for now - compilation problem
-	instance.Status.OfflineInstall = false
-
+	instance.Status.OfflineInstall = regjson.External
+	if instance.Spec.Action == "" {
+		instance.Spec.Action = "Check"
+	}
 
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
@@ -293,8 +240,22 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info("status","status",instance.Status.CPStatus)
 	reqLogger.Info("Finished reconcile")
 	// Recheck status every minutes - may need to revisit
 	return reconcile.Result{RequeueAfter: time.Second*300}, nil
+}
+
+func (r *ReconcileCPeir) getRest(restOper, restArg string) (resp []byte, err error) {
+		reqLogger := log.WithValues("RestOper", restOper, "RestArg", restArg)
+
+    reqLogger.Info("Starting the application...")
+    response, err := http.Get(strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",restArg},""))
+    if err != nil {
+        reqLogger.Error(err,"Rest call failed")
+				return nil, err
+    } else {
+        data, _ := ioutil.ReadAll(response.Body)
+        reqLogger.Info(string(data))
+				return data, nil
+    }
 }

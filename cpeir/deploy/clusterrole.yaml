@@ -4,7 +4,7 @@ metadata:
   name: cpeir
 rules:
 - apiGroups: [""]
-  resources: ["nodes"]
+  resources: ["nodes","persistentvolumeclaims","pods"]
   verbs: ["get", "watch", "list"]
 - apiGroups: ["config.openshift.io"]
   resources: ["clusterversions"]
