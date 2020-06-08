@@ -31,6 +31,13 @@ spec:
         spec:
           description: CPeirSpec defines the desired state of CPeir
           properties:
+            action:
+              enum:
+              - Check
+              - Install
+              - HealthCheck
+              - Upgrade
+              type: string
             cpfeatures:
               items:
                 type: string
@@ -46,6 +53,9 @@ spec:
             cpversion:
               type: string
           required:
+          - action
+          - cpfeatures
+          - cpsizetype
           - cptype
           - cpversion
           type: object
@@ -99,8 +109,7 @@ spec:
               description: OpenShift version
               type: string
             offlineInstall:
-              description: available image registry space - TBD - not working right
-                now - compilation problem
+              description: available image registry space -
               type: boolean
             onlineInstall:
               description: access to cp.icr.io
