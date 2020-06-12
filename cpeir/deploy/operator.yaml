@@ -38,7 +38,18 @@ spec:
           image: ibmcloudacademy/cpeir-runtime:1.0
           command:
             - node app.js
+          volumeMounts:
+          - name: check-scripts
+            mountPath: /check
+          - name: install-scripts
+            mountPath: /install
       volumes:
       - name: cpcfg
         configMap:
           name: cpeir-config
+      - name: check-scripts
+        configMap:
+          name: cpeir-check-scripts
+      - name: install-scripts
+        configMap:
+          name: cpeir-install-scripts

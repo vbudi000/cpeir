@@ -20,8 +20,22 @@ app.get('/capacity', function (req,res) {
   //res.send();
 })
 
-app.get('/installed', function (req,res) {
-  exec("./installed.sh  ", (error, stdout, stderr) => {
+app.get('/check/:cpver', function (req,res) {
+  exec("./check.sh  "+req.params.cpver, (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+      }
+      console.log(`stdout: ${stdout}`);
+      res.send(stdout)
+  });
+  //res.send();
+})
+
+app.get('/install/:cpver', function (req,res) {
+  exec("./install.sh  "+req.params.cpver, (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
       }
