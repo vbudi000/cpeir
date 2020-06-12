@@ -1,0 +1,14 @@
+[master]
+localhost ansible_connection=local
+
+[worker]
+localhost ansible_connection=local
+
+[proxy]
+localhost ansible_connection=local
+
+#[management]
+#localhost ansible_connection=local
+
+#[va]
+#localhost ansible_connection=local

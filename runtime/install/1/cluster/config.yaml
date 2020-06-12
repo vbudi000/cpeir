@@ -1,0 +1,64 @@
+# Licensed Materials - Property of IBM
+# IBM Cloud private
+# @ Copyright IBM Corp. 2019 All Rights Reserved
+# US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+
+---
+
+# A list of OpenShift nodes
+cluster_nodes:
+  master:
+    - <your-openshift-dedicated-node-to-deploy-master-components>
+  proxy:
+    - <your-openshift-dedicated-node-to-deploy-proxy-components>
+  management:
+    - <your-openshift-dedicated-node-to-deploy-management-components>
+
+# Storage Class
+storage_class: <storage class available in OpenShift>
+
+## You can set different storage class for logging.
+## By default it will use the value of storage_class.
+# elasticsearch_storage_class:
+
+## If you are installing on ROKS environment please update following settings
+## roks_enabled: set this to true
+## roks_url: Openshift public service endpoint URL
+## roks_user_prefix: User prefix used for users enabled on ROKS, Default value is 'IAM#'.
+## You can get users information from command 'oc get users'.
+## ROKS settings
+roks_enabled: false
+roks_url: <roks_url>
+roks_user_prefix: "IAM#"
+
+# default_admin_password:
+# password_rules:
+#   - '^([a-zA-Z0-9\-]{32,})$'
+
+## You can disable following services if they are not needed
+management_services:
+  # Common services
+  iam-policy-controller: enabled
+  metering: enabled
+  licensing: disabled
+  monitoring: enabled
+  nginx-ingress: enabled
+  common-web-ui: enabled
+  catalog-ui: enabled
+  mcm-kui: enabled
+  logging: disabled
+  audit-logging: disabled
+  system-healthcheck-service: disabled
+  multitenancy-enforcement: disabled
+
+  # mcm services
+  multicluster-hub: enabled
+  search: enabled
+  key-management: enabled
+  notary: disabled
+  cis-controller: disabled
+  vulnerability-advisor: disabled
+  mutation-advisor: disabled
+  sts: disabled
+  secret-encryption-policy-controller: disabled
+  image-security-enforcement: disabled
