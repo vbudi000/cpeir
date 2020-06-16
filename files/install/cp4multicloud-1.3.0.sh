@@ -2,6 +2,9 @@
 
 entitlement=$1
 # Installing
+if [ -z $entitlement ]; then
+  exit 9
+fi
 
 # Create entitelemt key -> imagePullSecrets
 oc create secret docker-registry icr-io \
@@ -13,8 +16,13 @@ oc create secret docker-registry icr-io \
 # collect cluster info
 sc=$(oc get sc --no-headers -o custom-columns=name:metadata.name | head -n 1)
 workers=$(oc get node --no-headers -o  custom-columns=name:metadata.name -l node-role.kubernetes.io/worker | paste -s -d, -)
-roks="false"
-roks_url='""'
+console=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}')
+roks_url=${console#"console-openshift-console."}
+if [[ $roks_url == apps* ]]; then
+  roks="false"
+else
+  roks="true"
+fi
 
 # Create configuration files
 cat cp4multicloud-1.3.0-configMap.yaml | \

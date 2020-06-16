@@ -1,0 +1,22 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: cpeir-configmap
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: cpeir
+      containers:
+        - resources: {}
+          terminationMessagePath: /dev/termination-log
+          name: configmap-builder
+          command:
+            - install-with-openshift
+          imagePullPolicy: Always
+          terminationMessagePolicy: File
+          image: ibmcloudacademy/cpeir-runtime:1.0
+      serviceAccount: cpeir

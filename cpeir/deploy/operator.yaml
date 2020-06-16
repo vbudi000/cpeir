@@ -37,7 +37,8 @@ spec:
         - name: runtime
           image: ibmcloudacademy/cpeir-runtime:1.0
           command:
-            - node app.js
+            - node
+            - app.js
           volumeMounts:
           - name: check-scripts
             mountPath: /check

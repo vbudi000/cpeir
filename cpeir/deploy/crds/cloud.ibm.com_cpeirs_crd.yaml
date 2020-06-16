@@ -93,15 +93,23 @@ spec:
             clusterWorkerNum:
               description: Number of Worker nodes
               type: integer
-            cpreqcpu:
-              description: CPU installation requirement
-              type: string
-            cpreqmemory:
-              description: Memory installation requirement
-              type: string
-            cpreqstorage:
-              description: Storage (PVC) installation requirement
-              type: string
+            cpreq:
+              description: Calculated CloudPak requirements
+              properties:
+                cpreqcpu:
+                  description: CPU installation requirement
+                  type: string
+                cpreqmemory:
+                  description: Memory installation requirement
+                  type: string
+                cpreqstorage:
+                  description: Storage (PVC) installation requirement
+                  type: string
+              required:
+              - cpreqcpu
+              - cpreqmemory
+              - cpreqstorage
+              type: object
             installedFeatures:
               description: List of installed features as investigated - TBD - now
                 empty
@@ -125,9 +133,7 @@ spec:
           - clusterCpu
           - clusterMemory
           - clusterStorage
-          - cpreqcpu
-          - cpreqmemory
-          - cpreqstorage
+          - cpreq
           - ocpVersion
           - statusMessages
           type: object
