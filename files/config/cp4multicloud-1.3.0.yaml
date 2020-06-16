@@ -1,0 +1,4 @@
+requirements:
+  default:
+    cpu: 3000m
+    memory: 10Gi
