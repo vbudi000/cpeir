@@ -75,24 +75,36 @@ spec:
               - ValidationFailed
               - UpgradeAvailable
               type: string
-            clusterArch:
-              description: Worker node architecture
-              type: string
-            clusterCpu:
-              description: Allocatable CPU in worker nodes
-              type: string
-            clusterMemory:
-              description: Allocatable memory in worker nodes
-              type: string
-            clusterStorage:
-              description: Available Storage - TBD - now showing 0
-              type: string
-            clusterVersion:
-              description: Worker node kubelet version
-              type: string
-            clusterWorkerNum:
-              description: Number of Worker nodes
-              type: integer
+            cluster:
+              description: Retrieved Cluster characteristics
+              properties:
+                clusterArch:
+                  description: Worker node architecture
+                  type: string
+                clusterCpu:
+                  description: Allocatable CPU in worker nodes
+                  type: string
+                clusterMemory:
+                  description: Allocatable memory in worker nodes
+                  type: string
+                clusterStorage:
+                  description: Available Storage - TBD - now showing 0
+                  type: string
+                clusterVersion:
+                  description: Worker node kubelet version
+                  type: string
+                clusterWorkerNum:
+                  description: Number of Worker nodes
+                  type: integer
+                ocpVersion:
+                  description: OpenShift version
+                  type: string
+              required:
+              - clusterCpu
+              - clusterMemory
+              - clusterStorage
+              - ocpVersion
+              type: object
             cpreq:
               description: Calculated CloudPak requirements
               properties:
@@ -116,9 +128,6 @@ spec:
               items:
                 type: string
               type: array
-            ocpVersion:
-              description: OpenShift version
-              type: string
             offlineInstall:
               description: available image registry space -
               type: boolean
@@ -130,11 +139,8 @@ spec:
               type: string
           required:
           - CPStatus
-          - clusterCpu
-          - clusterMemory
-          - clusterStorage
+          - cluster
           - cpreq
-          - ocpVersion
           - statusMessages
           type: object
       required:

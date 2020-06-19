@@ -15,7 +15,14 @@ spec:
           terminationMessagePath: /dev/termination-log
           name: configmap-builder
           command:
-            - install-with-openshift
+            - /bin/bash
+            - '-c'
+            - >-
+              git clone https://github.com/vbudi000/cpeir && cd cpeir && git checkout v2 &&
+              oc create configmap cpeir-config --from-file=files/config  &&
+              oc create configmap cpeir-check --from-file=files/check  &&
+              oc create configmap cpeir-install --from-file=files/install  &&
+              echo "done"
           imagePullPolicy: Always
           terminationMessagePolicy: File
           image: ibmcloudacademy/cpeir-runtime:1.0

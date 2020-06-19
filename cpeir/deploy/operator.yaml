@@ -50,7 +50,7 @@ spec:
           name: cpeir-config
       - name: check-scripts
         configMap:
-          name: cpeir-check-scripts
+          name: cpeir-check
       - name: install-scripts
         configMap:
-          name: cpeir-install-scripts
+          name: cpeir-install
