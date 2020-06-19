@@ -8,7 +8,7 @@ if [ $mgmtState = "Managed" ]; then
   storage=$(oc get config cluster -o custom-columns=storage:spec.storage)
   if [[ "$storage" == *"pvc"* ]]; then
     regpod=$(oc get pod -n openshift-image-registry -o custom-columns=name:metadata.name | grep image-registry | grep -v operator)
-    regsize=$(oc exec image-registry-6dcd6656b8-q8mnc -n openshift-image-registry -- df -k  | grep \/registry | awk '{print $4}')
+    regsize=$(oc exec ${regpod} -n openshift-image-registry -- df -k  | grep \/registry | awk '{print $4}')
   else
     regsize="999999999"
   fi

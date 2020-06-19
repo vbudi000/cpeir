@@ -60,8 +60,9 @@ type registry struct {
 }
 
 type installed struct {
+	Name string `json:name,omitempty`
 	Installed bool `json:installed`
-	Version string `json:version`
+	Version string `json:version,omitempty`
 }
 
 var log = logf.Log.WithName("controller_cpeir")
@@ -199,17 +200,24 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
   numfeat := 0
   installedfeat := 0
+	var cpureq resource.Quantity;
+	var memreq resource.Quantity;
+	var pvreq  resource.Quantity;
+
 	if ((instance.Status.CPStatus == "Initial") ||
 	    (instance.Status.CPStatus == "ReadyToInstall") ||
 			(instance.Status.CPStatus == "NotInstallable" )) {
 		// check the status and all installed
 		rcheck, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		if err != nil {
+			reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		}
 		var instjson installed
 		json.Unmarshal(rcheck, &instjson)
 		reqLogger.Info(string(rcheck),"json",instjson)
 		numfeat++
 
-		if ~(instjson.Installed) {
+		if !(instjson.Installed) {
 			installedfeat++
 			configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
 			yamlFile, err := ioutil.ReadFile(configFile)
@@ -221,22 +229,28 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			if err != nil {
 				reqLogger.Error(err,"Cannot un marshall file")
 			}
+			cpureq, err = resource.ParseQuantity(c.Requirements[configType].Cpu)
+			memreq, err = resource.ParseQuantity(c.Requirements[configType].Memory)
+			pvreq,  err = resource.ParseQuantity(c.Requirements[configType].PV)
+		} else {
+			cpureq, err = resource.ParseQuantity("0")
+			memreq, err = resource.ParseQuantity("0")
+			pvreq,  err = resource.ParseQuantity("0")
 		}
-
-		cpureq, err := resource.ParseQuantity(c.Requirements[configType].Cpu)
-		memreq, err := resource.ParseQuantity(c.Requirements[configType].Memory)
-		pvreq,  err := resource.ParseQuantity(c.Requirements[configType].PV)
 
 		/* Adding requriement calculated from sub-features */
 		if len(instance.Spec.CPFeatures) > 0 {
 			for _, feature := range instance.Spec.CPFeatures {
 				reqLogger.Info("Processing feature", "feature", feature)
 				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
+				if err != nil {
+					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature)
+				}
 				var instjsonfeat installed
 				json.Unmarshal(rcheck, &instjsonfeat)
 				reqLogger.Info(string(rcheckfeat),"json",instjsonfeat)
 				numfeat++
-				if ~(instjsonfeat.Installed) {
+				if !(instjsonfeat.Installed) {
 					installedfeat++
 					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + feature + "-" + instance.Spec.CPVersion +".yaml")
 					if err == nil {
@@ -278,32 +292,35 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	instance.Status.StatusMessages = " NO " //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
 
-	if install.Spec.Action == "Install" & instance.Status.CPStatus = "ReadyToInstall" {
+	if ((instance.Spec.Action == "Install") && (instance.Status.CPStatus == "ReadyToInstall")) {
 		// perform installation
 		rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		if err != nil {
+			reqLogger.Error(err, "Install result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		}
 		var instjson installed
-		json.Unmarshal(rcheck, &instjson)
-		reqLogger.Info(string(rcheck),"json",instjson)
-		rcheck, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion)
-		var instjson installed
-		json.Unmarshal(rcheck, &instjson)
-		reqLogger.Info(string(rcheck),"json",instjson)
+		json.Unmarshal(rinstall, &instjson)
+		reqLogger.Info(string(rinstall),"json",instjson)
 
 		if ((instjson.Installed) && (len(instance.Spec.CPFeatures) > 0)) {
-		}
-		/* Adding requriement calculated from sub-features */
-		if len(instance.Spec.CPFeatures) > 0 {
-			for _, feature := range instance.Spec.CPFeatures {
-				reqLogger.Info("Processing feature", "feature", feature)
-				rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
-				var instjsonfeat installed
-				json.Unmarshal(rinstfeat, &instjsonfeat)
-				reqLogger.Info(string(rinstfeat),"json",instjsonfeat)
-				numfeat++
-			}
+			/* Adding requriement calculated from sub-features */
+				for _, feature := range instance.Spec.CPFeatures {
+					reqLogger.Info("Installing feature", "feature", feature)
+					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
+					if err != nil {
+						reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature)
+					}
+					var instjsonfeat installed
+					json.Unmarshal(rinstfeat, &instjsonfeat)
+					reqLogger.Info(string(rinstfeat),"json",instjsonfeat)
+					if !instjsonfeat.Installed {
+						break
+					}
+				}
 		}
 	}
 
+	reqLogger.Info("Instance info","Instance",instance)
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		reqLogger.Error(err, "Status update failed")
