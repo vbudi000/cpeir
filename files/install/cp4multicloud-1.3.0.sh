@@ -1,9 +1,19 @@
 #!/bin/bash
 
+fn=$(basename $0)
+name="${fn%.*}"
+
 entitlement=$1
 # Installing
 if [ -z $entitlement ]; then
   exit 9
+fi
+
+running=$(oc get job ${name}-installer -n cpeir --no-headers 2>/dev/null | wc -l)
+
+if [ $running -gt 0 ]; then
+  /check/${fn}
+  exit 0
 fi
 
 # Create entitelemt key -> imagePullSecrets
@@ -23,7 +33,7 @@ if [[ $roks_url == apps* ]]; then
 else
   roks="true"
 fi
-
+cd /install
 # Create configuration files
 cat cp4multicloud-1.3.0-configMap.yaml | \
     sed "s/<entitlement>/${entitlement}/g" | \
@@ -38,7 +48,8 @@ oc apply -f cp4multicloud-1.3.0-install.yaml
 # loop to check installation
 # Install features
 
-echo "{\"rc\":0}"
+/check/$(basename $0)
+
 ## cleanup
 
 #oc delete configmap cp4multicluster-1.3.0-configmap
