@@ -9,4 +9,3 @@ spec:
   cpfeatures:
     - icam
   action: "Check"
-  entitlement: "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJJQk0gTWFya2V0cGxhY2UiLCJpYXQiOjE1ODc1OTUzOTcsImp0aSI6IjY5ZjMzMTE4ZjRmMzQzN2VhMTFkNWEyYjRjYmJjY2RlIn0.Lem8N9xXbTUEQp569wut46B3KlOX6Z3pNIvgELLYSKw"
