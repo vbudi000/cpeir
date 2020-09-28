@@ -16,7 +16,7 @@ spec:
       containers:
         - name: cpeir
           # Replace this with the built image name
-          image: ibmcloudacademy/cpeir:04
+          image: ibmcloudacademy/cpeir:v0.05
           command:
           - cpeir
           volumeMounts:
@@ -42,6 +42,10 @@ spec:
           volumeMounts:
           - name: cpbin
             mountPath: /usr/local/bin
+          - name: cpcfg
+            mountPath: /cfgdata
       volumes:
       - name: cpbin
         persistentVolumeClaim: cpbin
+      - name: cpcfg
+        persistentVolumeClaim: cpcfg

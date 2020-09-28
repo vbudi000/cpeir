@@ -242,21 +242,21 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		if len(instance.Spec.CPFeatures) > 0 {
 			for _, feature := range instance.Spec.CPFeatures {
 				reqLogger.Info("Processing feature", "feature", feature)
-				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
+				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
 				if err != nil {
-					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature)
+					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
 				}
 				var instjsonfeat installed
 				json.Unmarshal(rcheck, &instjsonfeat)
 				reqLogger.Info(string(rcheckfeat),"json",instjsonfeat)
 				numfeat++
 				if !(instjsonfeat.Installed) {
-					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature +".yaml")
+					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name +".yaml")
 					if err == nil {
 						var cf CPrequirements
 						err = yaml.Unmarshal(yamlFeatureFile, &cf)
 						if err != nil {
-							reqLogger.Error(err,"Cannot un marshall file " + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
+							reqLogger.Error(err,"Cannot un marshall file " + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
 						}
 						reqLogger.Info("CP Feature Requirement", "CPR", cf)
 						fcpureq, err := resource.ParseQuantity(cf.Requirements[configType].Cpu)
@@ -306,10 +306,10 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		if ((instjson.Installed) && (len(instance.Spec.CPFeatures) > 0)) {
 			/* Adding requriement calculated from sub-features */
 				for _, feature := range instance.Spec.CPFeatures {
-					reqLogger.Info("Installing feature", "feature", feature)
-					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
+					reqLogger.Info("Installing feature", "feature", feature.Name)
+					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
 					if err != nil {
-						reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature)
+						reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
 					}
 					var instjsonfeat installed
 					json.Unmarshal(rinstfeat, &instjsonfeat)
