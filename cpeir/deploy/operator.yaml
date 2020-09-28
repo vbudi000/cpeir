@@ -37,20 +37,11 @@ spec:
         - name: runtime
           image: ibmcloudacademy/cpeir-runtime:1.0
           command:
-            - node
-            - app.js
+            - bash
+            - start.sh
           volumeMounts:
-          - name: check-scripts
-            mountPath: /check
-          - name: install-scripts
-            mountPath: /install
+          - name: cpbin
+            mountPath: /usr/local/bin
       volumes:
-      - name: cpcfg
-        configMap:
-          name: cpeir-config
-      - name: check-scripts
-        configMap:
-          name: cpeir-check
-      - name: install-scripts
-        configMap:
-          name: cpeir-install
+      - name: cpbin
+        persistentVolumeClaim: cpbin

@@ -1,18 +1,18 @@
 FROM node
+# registry.redhat.io/rhscl/nodejs-10-rhel7:latest
 
-RUN mkdir /opt/app
-WORKDIR /opt/app
+RUN  mkdir /app
+WORKDIR /app
 
 EXPOSE 8080
 
 RUN curl https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.9/openshift-client-linux.tar.gz --output /tmp/client.tar.gz && \
     tar -xzf /tmp/client.tar.gz && \
-    ls -la && pwd && \
     mv oc /usr/local/bin/oc && \
     mv kubectl /usr/local/bin/kubectl  && \
     rm -f /tmp/client.tar.gz README.md
 
-COPY . /opt/app
+COPY . /app
 
 RUN npm install
 
@@ -24,4 +24,5 @@ RUN curl https://get.helm.sh/helm-v2.16.8-linux-amd64.tar.gz --output /tmp/helm.
     rm -f /tmp/helm.tar.gz && rm -rf linux-amd64 && \
     apt-get install git
 
-CMD ["node", "app.js"]
+#CMD ["node", "app.js"]
+CMD ["bash","start.sh"]

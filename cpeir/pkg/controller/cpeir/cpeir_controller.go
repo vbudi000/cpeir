@@ -218,7 +218,6 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		numfeat++
 
 		if !(instjson.Installed) {
-			installedfeat++
 			configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
 			yamlFile, err := ioutil.ReadFile(configFile)
 			if err != nil {
@@ -233,6 +232,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			memreq, err = resource.ParseQuantity(c.Requirements[configType].Memory)
 			pvreq,  err = resource.ParseQuantity(c.Requirements[configType].PV)
 		} else {
+			installedfeat++
 			cpureq, err = resource.ParseQuantity("0")
 			memreq, err = resource.ParseQuantity("0")
 			pvreq,  err = resource.ParseQuantity("0")
@@ -251,13 +251,12 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 				reqLogger.Info(string(rcheckfeat),"json",instjsonfeat)
 				numfeat++
 				if !(instjsonfeat.Installed) {
-					installedfeat++
-					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + feature + "-" + instance.Spec.CPVersion +".yaml")
+					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature +".yaml")
 					if err == nil {
 						var cf CPrequirements
 						err = yaml.Unmarshal(yamlFeatureFile, &cf)
 						if err != nil {
-							reqLogger.Error(err,"Cannot un marshall file " + feature + "-" + instance.Spec.CPVersion)
+							reqLogger.Error(err,"Cannot un marshall file " + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature)
 						}
 						reqLogger.Info("CP Feature Requirement", "CPR", cf)
 						fcpureq, err := resource.ParseQuantity(cf.Requirements[configType].Cpu)
@@ -273,6 +272,8 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 							pvreq.Add(fpvreq)
 						}
 					}
+				} else {
+					installedfeat++
 				}
 			}
 		}

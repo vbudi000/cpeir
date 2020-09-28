@@ -16,10 +16,19 @@ type CPeirSpec struct {
         CPType string `json:"cptype"`
         CPVersion string `json:"cpversion"`
 				CPSizeType string `json:"cpsizetype",omitempty`
-				CPEntitlement string `json:"entitlement",omitempty`
+				StorageClass string `json:"storageClass",omitempty`
 				// +kubebuilder:validation:Enum=Check;Install;HealthCheck;Upgrade
 				Action string `json:"action"`
-        CPFeatures []string `json:"cpfeatures"`
+        CPFeatures []CPeirFeature `json:"cpfeatures"`
+}
+
+type CPeirFeature struct {
+	// Feature name
+	Name string `json:"name"`
+	// StorageClass name if needed
+	StorageClass string `json:"storageClass",omitempty`
+	// Determine ha requirements
+	//HaEnabled bool `json:"haEnabled"`
 }
 
 type CPeirCPReq struct {

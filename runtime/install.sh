@@ -5,7 +5,7 @@ CPARG=$1
 
 res=""
 if [ -f /install/${CPARG}.sh ]; then
-  res=$(/install/${CPARG}.sh)
+  res=$(/bin/bash /install/${CPARG}.sh)
 fi
 
 if [ -z "$res" ]; then

@@ -4,7 +4,7 @@ CPARG=$1
 
 res=""
 if [ -f /check/${CPARG}.sh ]; then
-  res=$(/check/${CPARG}.sh)
+  res=$(/bin/bash /check/${CPARG}.sh)
 fi
 
 if [ -z "$res" ]; then

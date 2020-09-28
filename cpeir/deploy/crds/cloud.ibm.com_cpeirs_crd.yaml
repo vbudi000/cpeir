@@ -52,15 +52,12 @@ spec:
               type: string
             cpversion:
               type: string
-            entitlement:
-              type: string
           required:
           - action
           - cpfeatures
           - cpsizetype
           - cptype
           - cpversion
-          - entitlement
           type: object
         status:
           description: CPeirStatus defines the observed state of CPeir
