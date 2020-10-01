@@ -174,15 +174,15 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	var regjson registry
 	var verjson version
 
-  rcapacity, err := r.getRest("capacity","")
+  rcapacity, err := r.getRest("capacity","", "")
 	json.Unmarshal(rcapacity, &capjson)
 	reqLogger.Info(string(rcapacity),"json",capjson)
 
-	rregistry, err := r.getRest("registry","")
+	rregistry, err := r.getRest("registry","", "")
 	json.Unmarshal(rregistry,&regjson)
 	reqLogger.Info(string(rregistry),"json",regjson)
 
-	rversion, err := r.getRest("version", "")
+	rversion, err := r.getRest("version", "", "")
 	json.Unmarshal(rversion,&verjson)
 	reqLogger.Info(string(rversion),"json",verjson)
 
@@ -208,7 +208,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	    (instance.Status.CPStatus == "ReadyToInstall") ||
 			(instance.Status.CPStatus == "NotInstallable" )) {
 		// check the status and all installed
-		rcheck, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		rcheck, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
 		if err != nil {
 			reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
 		}
@@ -242,9 +242,9 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		if len(instance.Spec.CPFeatures) > 0 {
 			for _, feature := range instance.Spec.CPFeatures {
 				reqLogger.Info("Processing feature", "feature", feature)
-				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
+				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name, instance.Name)
 				if err != nil {
-					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
+					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name,instance.Name)
 				}
 				var instjsonfeat installed
 				json.Unmarshal(rcheck, &instjsonfeat)
@@ -295,7 +295,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	if ((instance.Spec.Action == "Install") && (instance.Status.CPStatus == "ReadyToInstall")) {
 		// perform installation
-		rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+		rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
 		if err != nil {
 			reqLogger.Error(err, "Install result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
 		}
@@ -307,7 +307,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			/* Adding requriement calculated from sub-features */
 				for _, feature := range instance.Spec.CPFeatures {
 					reqLogger.Info("Installing feature", "feature", feature.Name)
-					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
+					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name,instance.Name)
 					if err != nil {
 						reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
 					}
@@ -333,11 +333,17 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	return reconcile.Result{RequeueAfter: time.Second*300}, nil
 }
 
-func (r *ReconcileCPeir) getRest(restOper, restArg string) (resp []byte, err error) {
-		reqLogger := log.WithValues("RestOper", restOper, "RestArg", restArg)
+func (r *ReconcileCPeir) getRest(restOper, restArg, objName string) (resp []byte, err error) {
+		reqLogger := log.WithValues("RestOper", restOper, "RestArg", restArg, "object", objName)
 
     reqLogger.Info("Starting the application...")
-    response, err := http.Get(strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",restArg},""))
+		restUrl := ""
+		if (objName == "") {
+			restUrl = strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",restArg},"")
+		} else {
+			restUrl = strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",objName,"/",restArg},"")
+		}
+    response, err := http.Get(restUrl)
     if err != nil {
         reqLogger.Error(err,"Rest call failed")
 				return nil, err

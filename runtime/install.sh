@@ -1,11 +1,12 @@
 #!/bin/bash
 
-CPARG=$1
+OBJID=$1
+CPARG=$2
 
 
 res=""
 if [ -f /install/${CPARG}.sh ]; then
-  res=$(/bin/bash /install/${CPARG}.sh)
+  res=$(/bin/bash /install/${CPARG}.sh ${OBJID})
 fi
 
 if [ -z "$res" ]; then

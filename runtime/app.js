@@ -20,8 +20,8 @@ app.get('/capacity', function (req,res) {
   //res.send();
 })
 
-app.get('/check/:cpver', function (req,res) {
-  exec("./check.sh  "+req.params.cpver, (error, stdout, stderr) => {
+app.get('/check/:objid/:cpver', function (req,res) {
+  exec("./check.sh  "+req.params.objid+" "+req.params.cpver, (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
       }
@@ -34,8 +34,8 @@ app.get('/check/:cpver', function (req,res) {
   //res.send();
 })
 
-app.get('/install/:cpver', function (req,res) {
-  exec("./install.sh  "+req.params.cpver, (error, stdout, stderr) => {
+app.get('/install/:objid/:cpver', function (req,res) {
+  exec("./install.sh  "+req.params.objid+" "+req.params.cpver, (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
       }
