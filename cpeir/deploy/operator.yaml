@@ -35,13 +35,11 @@ spec:
             - name: OPERATOR_NAME
               value: "cpeir"
         - name: runtime
-          image: ibmcloudacademy/cpeir-runtime:1.0
+          image: vbudi/cpeir-runtime:v0.03
           command:
             - bash
             - start.sh
           volumeMounts:
-          - name: cpbin
-            mountPath: /usr/local/bin
           - name: cpcfg
             mountPath: /cfgdata
       volumes:

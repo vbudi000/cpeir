@@ -6,6 +6,6 @@ spec:
   cptype: "cp4multicloud"
   cpversion: "2.0.0"
   cpsizetype: "default"
-  cpfeatures:
-    - icam
+  storageClass: "ocs-storagecluster-ceph-rbd"
+  cpfeatures: []
   action: "Check"
