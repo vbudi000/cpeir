@@ -35,7 +35,7 @@ spec:
             - name: OPERATOR_NAME
               value: "cpeir"
         - name: runtime
-          image: vbudi/cpeir-runtime:v0.03
+          image: vbudi/cpeir-runtime:v0.05
           command:
             - bash
             - start.sh
