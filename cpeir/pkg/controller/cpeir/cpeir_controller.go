@@ -129,6 +129,16 @@ func connected() (ok bool) {
     return true
 }
 
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+
 // Reconcile reads that state of the cluster for a CPeir object and makes changes based on the state read
 // and what is in the CPeir.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
@@ -274,6 +284,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 					}
 				} else {
 					installedfeat++
+					instance.Status.InstalledFeatures = append(instance.Status.InstalledFeatures, feature.Name)
 				}
 			}
 		}
@@ -293,29 +304,35 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	instance.Status.StatusMessages = " NO " //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
 
-	if ((instance.Spec.Action == "Install") && (instance.Status.CPStatus == "ReadyToInstall")) {
-		// perform installation
-		rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
-		if err != nil {
-			reqLogger.Error(err, "Install result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
-		}
-		var instjson installed
-		json.Unmarshal(rinstall, &instjson)
-		reqLogger.Info(string(rinstall),"json",instjson)
+	if (instance.Spec.Action == "Install") {
 
-		if ((instjson.Installed) && (len(instance.Spec.CPFeatures) > 0)) {
-			/* Adding requriement calculated from sub-features */
+		if (instance.Status.CPStatus == "ReadyToInstall") {
+		// perform installation
+			rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
+			if err != nil {
+				reqLogger.Error(err, "Install result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+			}
+			var instjson installed
+			json.Unmarshal(rinstall, &instjson)
+			reqLogger.Info(string(rinstall),"json",instjson)
+		}
+
+		if (len(instance.Spec.CPFeatures) > 0) {
+			/* installing sub-features */
 				for _, feature := range instance.Spec.CPFeatures {
+
 					reqLogger.Info("Installing feature", "feature", feature.Name)
-					rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name,instance.Name)
-					if err != nil {
-						reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
-					}
-					var instjsonfeat installed
-					json.Unmarshal(rinstfeat, &instjsonfeat)
-					reqLogger.Info(string(rinstfeat),"json",instjsonfeat)
-					if !instjsonfeat.Installed {
-						break
+					if (!contains(instance.Status.InstalledFeatures,feature.Name)) {
+						rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name,instance.Name)
+						if err != nil {
+							reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
+						}
+						var instjsonfeat installed
+						json.Unmarshal(rinstfeat, &instjsonfeat)
+						reqLogger.Info(string(rinstfeat),"json",instjsonfeat)
+						if !instjsonfeat.Installed {
+							break
+						}
 					}
 				}
 		}
