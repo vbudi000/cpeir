@@ -16,7 +16,7 @@ spec:
       containers:
         - name: cpeir
           # Replace this with the built image name
-          image: ibmcloudacademy/cpeir:v0.006
+          image: ibmcloudacademy/cpeir:v0.007
           command:
           - cpeir
           volumeMounts:
@@ -35,7 +35,7 @@ spec:
             - name: OPERATOR_NAME
               value: "cpeir"
         - name: runtime
-          image: vbudi/cpeir-runtime:v0.05
+          image: vbudi/cpeir-runtime:v0.06
           imagePullPolicy: Always
           command:
             - bash
