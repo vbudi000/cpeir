@@ -19,21 +19,30 @@ fi
 
 # Step 2: Download scripts from GIT
 
+# Step 2: Download scripts from GIT
+
 mkdir /files
 cd /files
 filesRepo=${CPEIR_FILES_GIT:-"https://github.com/vbudi000/cpeir-files"}
 cpscriptRepo=${CPSCRIPT_GIT:-"https://github.com/vbudi000/cpeir-scripts"}
+filesRepoFolder=${filesRepo##*/}
+cpscriptRepoFolder=${cpscriptRepo##*/}
+git clone ${filesRepo}
+git clone ${cpscriptRepo}
 
-mv -T /files/${filesRepoFolder}/installjob /installjob
+mv -T /files/${filesRepoFolder}/check /check
+mv -T /files/${filesRepoFolder}/install /install
+mv /files/${filesRepoFolder}/config/* /cfgdata
 mv -T /files/${cpscriptRepoFolder} /script
 
-chmod -R a+x /installjob
+chmod -R a+x /check
+chmod -R a+x /install
 chmod -R a+x /script
 
-cd /installjob
+cd /app
 
 rm -rf /files
 
 # Step 3: Start the nodejs server
 
-bash ./${name}.sh
+node  app.js

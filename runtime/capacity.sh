@@ -44,7 +44,7 @@ maxmem=0
 archlist=""
 numnode=0
 # Get capacity of the cluster
-for node in $(oc get node -l node-role.kubernetes.io/worker --no-headers -o custom-columns=name:metadata.name)
+for node in $(oc get node -l node-role.kubernetes.io/worker,cluster.ocs.openshift.io/openshift-storage!="" --no-headers -o custom-columns=name:metadata.name)
 do
   numnode=$(( numnode+1 ))
   alloc=$(oc get node ${node} --no-headers -o custom-columns=cpu:status.allocatable.cpu,memory:status.allocatable.memory,arch:status.nodeInfo.architecture,kubelet:status.nodeInfo.kubeletVersion)

@@ -260,7 +260,10 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 				json.Unmarshal(rcheck, &instjsonfeat)
 				reqLogger.Info(string(rcheckfeat),"json",instjsonfeat)
 				numfeat++
-				if !(instjsonfeat.Installed) {
+				if (instjsonfeat.Installed) {
+					installedfeat++
+					instance.Status.InstalledFeatures = append(instance.Status.InstalledFeatures, feature.Name)
+				} else {
 					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name +".yaml")
 					if err == nil {
 						var cf CPrequirements
@@ -282,9 +285,6 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 							pvreq.Add(fpvreq)
 						}
 					}
-				} else {
-					installedfeat++
-					instance.Status.InstalledFeatures = append(instance.Status.InstalledFeatures, feature.Name)
 				}
 			}
 		}
@@ -317,12 +317,13 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			reqLogger.Info(string(rinstall),"json",instjson)
 		}
 
-		if (len(instance.Spec.CPFeatures) > 0) {
+		if ((instance.Status.CPStatus == "Installed") && (len(instance.Spec.CPFeatures) > 0)) {
 			/* installing sub-features */
 				for _, feature := range instance.Spec.CPFeatures {
 
 					reqLogger.Info("Installing feature", "feature", feature.Name)
 					if (!contains(instance.Status.InstalledFeatures,feature.Name)) {
+						reqLogger.Info("Running install for feature", "feature", feature.Name)
 						rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name,instance.Name)
 						if err != nil {
 							reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
