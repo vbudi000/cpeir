@@ -224,7 +224,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 		var instjson installed
 		json.Unmarshal(rcheck, &instjson)
-		reqLogger.Info(string(rcheck),"json",instjson)
+		reqLogger.Info(string(rcheck)," Prod check json",instjson)
 		numfeat++
 
 		if !(instjson.Installed) {
@@ -258,7 +258,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 				}
 				var instjsonfeat installed
 				json.Unmarshal(rcheckfeat, &instjsonfeat)
-				reqLogger.Info(string(rcheckfeat),"json",instjsonfeat)
+				reqLogger.Info(string(rcheckfeat),"Feature check json",instjsonfeat)
 				numfeat++
 				if (instjsonfeat.Installed) {
 					installedfeat++
@@ -319,7 +319,10 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			reqLogger.Info(string(rinstall),"json",instjson)
 		}
 
-		if ((instance.Status.CPStatus == "ReadyToInstall") && (len(instance.Spec.CPFeatures) > 0)) {
+
+		reqLogger.Info("Checking features for install", "feature", instance.Spec.CPFeatures)
+
+		if (len(instance.Spec.CPFeatures) > 0) {
 			/* installing sub-features */
 				for _, feature := range instance.Spec.CPFeatures {
 
