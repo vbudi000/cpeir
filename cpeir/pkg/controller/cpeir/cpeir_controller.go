@@ -151,6 +151,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	reqLogger.Info("Reconciling CPeir")
 	// Fetch the CPeir instance
 	instance := &cloudv1alpha1.CPeir{}
+	statusMessage := ""
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -231,7 +232,9 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 			configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
 			yamlFile, err := ioutil.ReadFile(configFile)
 			if err != nil {
-				reqLogger.Error(err, "yamlFile read error")
+				reqLogger.Error(err, "yamlFile read error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml")
+				instance.Status.CPStatus = "ValidationFailed"
+				statusMessage = statusMessage + "cloudpak unsupported yet "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + "\n"
 			}
 			var c CPrequirements
 			err = yaml.Unmarshal(yamlFile, &c)
@@ -286,6 +289,10 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 						if err == nil {
 							pvreq.Add(fpvreq)
 						}
+					}	else {
+						reqLogger.Error(err, "feature yamlFile read error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name + ".yaml")
+						instance.Status.CPStatus = "ValidationFailed"
+						statusMessage = statusMessage + "cloudpak feature unsupported yet "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + " - " + feature.Name + "\n"
 					}
 				}
 			}
@@ -304,7 +311,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		instance.Status.CPStatus = "ReadyToInstall"
 	}
 
-	instance.Status.StatusMessages = " NO " //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
+	instance.Status.StatusMessages = statusMessage //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
 
 	if (instance.Spec.Action == "Install") {
 
