@@ -3,24 +3,19 @@ package cpeir
 import (
 	"context"
 	"time"
-	"strconv"
 	"net/http"
 	"io/ioutil"
-	//"io"
-	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
-	//corev1 "k8s.io/api/core/v1"
-	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	//configv1 "github.com/openshift/api/config/v1"
-	//corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-	//lientimageregistryv1 "github.com/openshift/cluster-image-registry-operator/pkg/generated/clientset/versioned/typed/imageregistry/v1"
-	//clientimageregistryv1 "github.com/openshift/client-go/imageregistry/clientset/versioned/typed/imageregistry/v1"
+	"strings"
+	"encoding/json"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"gopkg.in/yaml.v2"
+	//"strconv"
+	cloudv1alpha1 "github.ibm.com/CASE/cpeir/pkg/apis/cloud/v1alpha1"
+	//appsv1 "k8s.io/api/apps/v1"
+	//corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -41,6 +36,33 @@ type System struct {
 
 type CPrequirements struct {
   Requirements map[string]System
+}
+
+type capacity struct {
+	TotCpu resource.Quantity `json:totcpu`
+	TotMem resource.Quantity `json:totmem`
+	MaxCpu resource.Quantity `json:maxcpu`
+	MaxMem resource.Quantity `json:maxmem`
+	Arch   string `json:arch`
+	Kubelet string `json:kubever`
+	NumNode int   `json:numnode`
+}
+
+type version struct {
+	OCPVersion string `json:version`
+	UpgradeChannel string `json:channel`
+}
+
+type registry struct {
+	Configured bool `json:configured`
+	External bool `json:external`
+	Capacity resource.Quantity `json:capacity`
+}
+
+type installed struct {
+	Name string `json:name,omitempty`
+	Installed bool `json:installed`
+	Version string `json:version,omitempty`
 }
 
 var log = logf.Log.WithName("controller_cpeir")
@@ -107,6 +129,16 @@ func connected() (ok bool) {
     return true
 }
 
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+
 // Reconcile reads that state of the cluster for a CPeir object and makes changes based on the state read
 // and what is in the CPeir.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
@@ -119,6 +151,7 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 	reqLogger.Info("Reconciling CPeir")
 	// Fetch the CPeir instance
 	instance := &cloudv1alpha1.CPeir{}
+	statusMessage := ""
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -131,170 +164,222 @@ func (r *ReconcileCPeir) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-
-	// Start of the reconcile loop -
-	// Read configuration file
+	// Read configuration file - calculate installation requirements
 	configType := instance.Spec.CPSizeType;
 	if configType == "" {
 		configType = "default"
-	}
-	configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
-	yamlFile, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		reqLogger.Info("yamlFile.Get err ", "Error", err)
-  }
-	var c CPrequirements
-  err = yaml.Unmarshal(yamlFile, &c)
-  if err != nil {
-		reqLogger.Info("Cannot un marshall file","Error", err)
-  }
-
-  reqLogger.Info("CP Requirement", "CPR", c, "configType", configType)
-	cpureq, err := resource.ParseQuantity(c.Requirements[configType].Cpu)
-	memreq, err := resource.ParseQuantity(c.Requirements[configType].Memory)
-	pvreq,  err := resource.ParseQuantity(c.Requirements[configType].PV)
-	reqLogger.Info("CPU", "error", err, "cpu", cpureq, "memory", memreq, "Features", instance.Spec.CPFeatures)
-
-	/* Adding requriement calculated from sub-features */
-	if len(instance.Spec.CPFeatures) > 0 {
-		for _, feature := range instance.Spec.CPFeatures {
-			reqLogger.Info("Processing feature", "feature", feature)
-			yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + feature + "-" + instance.Spec.CPVersion +".yaml")
-			if err == nil {
-				var cf CPrequirements
-				err = yaml.Unmarshal(yamlFeatureFile, &cf)
-				if err != nil {
-					reqLogger.Info("Cannot un marshall file","Error", err, "File", feature + "-" + instance.Spec.CPVersion)
-				}
-				reqLogger.Info("CP Feature Requirement", "CPR", cf)
-				fcpureq, err := resource.ParseQuantity(cf.Requirements[configType].Cpu)
-				if err == nil {
-					cpureq.Add(fcpureq)
-				}
-				fmemreq, err := resource.ParseQuantity(cf.Requirements[configType].Memory)
-				if err == nil {
-					memreq.Add(fmemreq)
-				}
-				fpvreq,  err := resource.ParseQuantity(cf.Requirements[configType].PV)
-				if err == nil {
-					pvreq.Add(fpvreq)
-				}
-			}
-		}
+		instance.Spec.CPSizeType = "default"
 	}
 
-	// Collect cluster information config.openshift.io/v1 (clientconfigv1.ClusterVersionsGetter)
-	var clientConfigV1 clientconfigv1.ConfigV1Interface
-  clientConfigV1, err = clientconfigv1.NewForConfig(config)
-
-	cver, err := clientConfigV1.ClusterVersions().Get("version", metav1.GetOptions{})
-	var ocpVer string
-	if err != nil {
-		reqLogger.Info(err.Error())
-		ocpVer = ""
-	} else {
-		ocpVer = cver.Status.Desired.Version
+	if instance.Status.CPStatus == "" {
+		instance.Status.CPStatus = "Initial"
 	}
 
-	// image registry information - have not been able to get this part to compile
-	registryPod := ""
-	registryType := "pvc"
-
-	pods, err := clientset.CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	// assuming OpenShift always have image-registry
-	for _, pod := range pods.Items {
-		registryPod = pod.Name
-		podContainers := pod.Spec.Containers
-		for _, container := range podContainers {
-			for _, envvar := range container.Env {
-				if envvar.Name == "REGISTRY_STORAGE" {
-					registryType = envvar.Value
-					reqLogger.Info("registry type", "type" , registryType, "name", registryPod)
-				}
-			}
-		}
+	if instance.Spec.Action == "" {
+		instance.Spec.Action = "Check"
 	}
 
-	if (registryType == "pvc") {
-		// retrieve PVC size
-		pvcs, err := clientset.CoreV1().PersistentVolumeClaims("openshift-image-registry").List(metav1.ListOptions{FieldSelector: "metadata.name=image-registry-storage"})
+	// Collect cluster information
+
+	var capjson capacity
+	var regjson registry
+	var verjson version
+
+  rcapacity, err := r.getRest("capacity","", "")
+	json.Unmarshal(rcapacity, &capjson)
+	reqLogger.Info(string(rcapacity),"json",capjson)
+
+	rregistry, err := r.getRest("registry","", "")
+	json.Unmarshal(rregistry,&regjson)
+	reqLogger.Info(string(rregistry),"json",regjson)
+
+	rversion, err := r.getRest("version", "", "")
+	json.Unmarshal(rversion,&verjson)
+	reqLogger.Info(string(rversion),"json",verjson)
+
+	instance.Status.ClusterStatus.ClusterCPU = capjson.TotCpu
+	instance.Status.ClusterStatus.ClusterMemory = capjson.TotMem
+	instance.Status.ClusterStatus.ClusterArch = capjson.Arch
+	instance.Status.ClusterStatus.ClusterWorkerNum = capjson.NumNode
+	instance.Status.ClusterStatus.ClusterKubelet = capjson.Kubelet
+	instance.Status.ClusterStatus.OCPVersion = verjson.OCPVersion
+	instance.Status.OnlineInstall = connected()
+	// Set to false for now - compilation problem
+	instance.Status.OfflineInstall = regjson.External
+
+	// Perform check for status < Installed
+
+  numfeat := 0
+  installedfeat := 0
+	var cpureq resource.Quantity;
+	var memreq resource.Quantity;
+	var pvreq  resource.Quantity;
+
+	if ((instance.Status.CPStatus == "Initial") ||
+	    (instance.Status.CPStatus == "ReadyToInstall") ||
+			(instance.Status.CPStatus == "NotInstallable" )) {
+		// check the status and all installed
+		rcheck, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
 		if err != nil {
-			reqLogger.Info(err.Error())
+			reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
 		}
-	  for _, pvc := range pvcs.Items {
-			//size := pvc.Status.Capacity.Storage()
-			reqLogger.Info("pvc registry size", "size", pvc)
+		var instjson installed
+		json.Unmarshal(rcheck, &instjson)
+		reqLogger.Info(string(rcheck)," Prod check json",instjson)
+		numfeat++
+
+		if !(instjson.Installed) {
+			configFile := "/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml"
+			yamlFile, err := ioutil.ReadFile(configFile)
+			if err != nil {
+				reqLogger.Error(err, "yamlFile read error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion +".yaml")
+				instance.Status.CPStatus = "ValidationFailed"
+				statusMessage = statusMessage + "cloudpak unsupported yet "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + "\n"
+			}
+			var c CPrequirements
+			err = yaml.Unmarshal(yamlFile, &c)
+			if err != nil {
+				reqLogger.Error(err,"Cannot un marshall file")
+			}
+			cpureq, err = resource.ParseQuantity(c.Requirements[configType].Cpu)
+			memreq, err = resource.ParseQuantity(c.Requirements[configType].Memory)
+			pvreq,  err = resource.ParseQuantity(c.Requirements[configType].PV)
+		} else {
+			installedfeat++
+			cpureq, err = resource.ParseQuantity("0")
+			memreq, err = resource.ParseQuantity("0")
+			pvreq,  err = resource.ParseQuantity("0")
+		}
+
+		/* Adding requriement calculated from sub-features */
+		if len(instance.Spec.CPFeatures) > 0 {
+			for _, feature := range instance.Spec.CPFeatures {
+				reqLogger.Info("Processing feature", "feature", feature)
+				rcheckfeat, err := r.getRest("check",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name, instance.Name)
+				if err != nil {
+					reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name,instance.Name)
+				}
+				var instjsonfeat installed
+				json.Unmarshal(rcheckfeat, &instjsonfeat)
+				reqLogger.Info(string(rcheckfeat),"Feature check json",instjsonfeat)
+				numfeat++
+				if (instjsonfeat.Installed) {
+					installedfeat++
+					if (!contains(instance.Status.InstalledFeatures,feature.Name)) {
+						instance.Status.InstalledFeatures = append(instance.Status.InstalledFeatures, feature.Name)
+					}
+				} else {
+					yamlFeatureFile, err := ioutil.ReadFile("/cfgdata/" + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name +".yaml")
+					if err == nil {
+						var cf CPrequirements
+						err = yaml.Unmarshal(yamlFeatureFile, &cf)
+						if err != nil {
+							reqLogger.Error(err,"Cannot un marshall file " + instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name)
+						}
+						reqLogger.Info("CP Feature Requirement", "CPR", cf)
+						fcpureq, err := resource.ParseQuantity(cf.Requirements[configType].Cpu)
+						if err == nil {
+							cpureq.Add(fcpureq)
+						}
+						fmemreq, err := resource.ParseQuantity(cf.Requirements[configType].Memory)
+						if err == nil {
+							memreq.Add(fmemreq)
+						}
+						fpvreq,  err := resource.ParseQuantity(cf.Requirements[configType].PV)
+						if err == nil {
+							pvreq.Add(fpvreq)
+						}
+					}	else {
+						reqLogger.Error(err, "feature yamlFile read error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name + ".yaml")
+						instance.Status.CPStatus = "ValidationFailed"
+						statusMessage = statusMessage + "cloudpak feature unsupported yet "+instance.Spec.CPType + "-" + instance.Spec.CPVersion + " - " + feature.Name + "\n"
+					}
+				}
+			}
 		}
 	}
+	// Store the total requirements
+	instance.Status.CPRequirement.CPReqCPU = cpureq
+	instance.Status.CPRequirement.CPReqMemory = memreq
+	instance.Status.CPRequirement.CPReqStorage = pvreq
 
-	// Collect nodes information
-	nodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
-	if err != nil {
-		reqLogger.Info(err.Error())
-	}
-	reqLogger.Info("There are nodes in the cluster\n", "Node number", len(nodes.Items))
-	totCpu := resource.NewQuantity(0,resource.DecimalSI);
-	totMemory := resource.NewQuantity(0,resource.BinarySI);
-  var acpu *resource.Quantity
-	var amem *resource.Quantity
-	var nodeArch string;
-	var kubeVer string;
-
-	if len(nodes.Items) > 0 {
-
-		for _, node := range nodes.Items {
-			acpu = node.Status.Allocatable.Cpu()
-			amem = node.Status.Allocatable.Memory()
-			nodeArch = node.Status.NodeInfo.Architecture
-			kubeVer  = node.Status.NodeInfo.KubeletVersion
-			totCpu.Add(*acpu)
-			totMemory.Add(*amem)
-		}
-	}
-
-  reqLogger.Info("total available capacity:", "CPU", totCpu.MilliValue(), "Memory", totMemory.Value())
-
-  if (totCpu.Cmp(cpureq)<0) && (totMemory.Cmp(memreq)<0) {
+	if (numfeat == installedfeat) {
+		instance.Status.CPStatus = "Installed"
+	} else if ((capjson.TotCpu.Cmp(cpureq)<0) || (capjson.TotMem.Cmp(memreq)<0)) {
 		instance.Status.CPStatus = "NotInstallable"
 	} else {
 		instance.Status.CPStatus = "ReadyToInstall"
 	}
-	instance.Status.StatusMessages = "Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
-	instance.Status.CPReqCPU = cpureq
-	instance.Status.CPReqMemory = memreq
-	instance.Status.CPReqStorage = pvreq
-	instance.Status.ClusterCPU = *totCpu
-	instance.Status.ClusterMemory = *totMemory
-	instance.Status.ClusterArch = nodeArch
-	instance.Status.ClusterWorkerNum = len(nodes.Items)
-	instance.Status.ClusterKubelet = kubeVer
-	instance.Status.OCPVersion = ocpVer
-	instance.Status.OnlineInstall = connected()
-	// Set to false for now - compilation problem
-	instance.Status.OfflineInstall = false
+
+	instance.Status.StatusMessages = statusMessage //Allocatable worker nodes capacity is CPU="+strconv.FormatInt(totCpu.MilliValue(),10)+"m and memory="+strconv.FormatInt(totMemory.Value(),10)+"\n"+"Requirement is CPU="+strconv.FormatInt(cpureq.MilliValue(),10)+"m and memory="+strconv.FormatInt(memreq.Value(),10)
+
+	if (instance.Spec.Action == "Install") {
+
+		if (instance.Status.CPStatus == "ReadyToInstall") {
+		// perform installation
+			rinstall, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion,instance.Name)
+			if err != nil {
+				reqLogger.Error(err, "Install result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion)
+			}
+			var instjson installed
+			json.Unmarshal(rinstall, &instjson)
+			reqLogger.Info(string(rinstall),"json",instjson)
+		}
 
 
+		reqLogger.Info("Checking features for install", "feature", instance.Spec.CPFeatures)
+
+		if (len(instance.Spec.CPFeatures) > 0) {
+			/* installing sub-features */
+				for _, feature := range instance.Spec.CPFeatures {
+
+					reqLogger.Info("Installing feature", "feature", feature.Name)
+					if (!contains(instance.Status.InstalledFeatures,feature.Name)) {
+						reqLogger.Info("Running install for feature", "feature", feature.Name)
+						rinstfeat, err := r.getRest("install",instance.Spec.CPType + "-" + instance.Spec.CPVersion + "-" + feature.Name,instance.Name)
+						if err != nil {
+							reqLogger.Error(err, "Check result error "+instance.Spec.CPType + "-" + instance.Spec.CPVersion+"-"+feature.Name)
+						}
+						var instjsonfeat installed
+						json.Unmarshal(rinstfeat, &instjsonfeat)
+						reqLogger.Info(string(rinstfeat),"json",instjsonfeat)
+						if !instjsonfeat.Installed {
+							break
+						}
+					}
+				}
+		}
+	}
+
+	reqLogger.Info("Instance info","Instance",instance)
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		reqLogger.Error(err, "Status update failed")
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info("status","status",instance.Status.CPStatus)
 	reqLogger.Info("Finished reconcile")
 	// Recheck status every minutes - may need to revisit
 	return reconcile.Result{RequeueAfter: time.Second*300}, nil
+}
+
+func (r *ReconcileCPeir) getRest(restOper, restArg, objName string) (resp []byte, err error) {
+		reqLogger := log.WithValues("RestOper", restOper, "RestArg", restArg, "object", objName)
+
+    reqLogger.Info("Starting the application...")
+		restUrl := ""
+		if (objName == "") {
+			restUrl = strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",restArg},"")
+		} else {
+			restUrl = strings.Join([]string{"http://127.0.0.1:8080/",restOper,"/",objName,"/",restArg},"")
+		}
+    response, err := http.Get(restUrl)
+    if err != nil {
+        reqLogger.Error(err,"Rest call failed")
+				return nil, err
+    } else {
+        data, _ := ioutil.ReadAll(response.Body)
+        reqLogger.Info(string(data))
+				return data, nil
+    }
 }

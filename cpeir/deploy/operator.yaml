@@ -16,7 +16,7 @@ spec:
       containers:
         - name: cpeir
           # Replace this with the built image name
-          image: ibmcloudacademy/cpeir:03
+          image: ibmcloudacademy/cpeir:v0.007
           command:
           - cpeir
           volumeMounts:
@@ -34,7 +34,17 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "cpeir"
+        - name: runtime
+          image: vbudi/cpeir-runtime:v0.06
+          imagePullPolicy: Always
+          command:
+            - bash
+            - start.sh
+          volumeMounts:
+          - name: cpcfg
+            mountPath: /cfgdata
       volumes:
+      - name: cpbin
+        emptyDir: {}
       - name: cpcfg
-        configMap:
-          name: cpeir-config
+        emptyDir: {}

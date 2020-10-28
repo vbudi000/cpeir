@@ -31,9 +31,26 @@ spec:
         spec:
           description: CPeirSpec defines the desired state of CPeir
           properties:
+            action:
+              enum:
+              - Check
+              - Install
+              - HealthCheck
+              - Upgrade
+              type: string
             cpfeatures:
               items:
-                type: string
+                properties:
+                  name:
+                    description: Feature name
+                    type: string
+                  storageClass:
+                    description: StorageClass name if needed
+                    type: string
+                required:
+                - name
+                - storageClass
+                type: object
               type: array
             cpsizetype:
               type: string
@@ -45,9 +62,15 @@ spec:
               type: string
             cpversion:
               type: string
+            storageClass:
+              type: string
           required:
+          - action
+          - cpfeatures
+          - cpsizetype
           - cptype
           - cpversion
+          - storageClass
           type: object
         status:
           description: CPeirStatus defines the observed state of CPeir
@@ -62,45 +85,61 @@ spec:
               - ValidationFailed
               - UpgradeAvailable
               type: string
-            clusterArch:
-              description: Worker node architecture
-              type: string
-            clusterCpu:
-              description: Allocatable CPU in worker nodes
-              type: string
-            clusterMemory:
-              description: Allocatable memory in worker nodes
-              type: string
-            clusterStorage:
-              description: Available Storage - TBD - now showing 0
-              type: string
-            clusterVersion:
-              description: Worker node kubelet version
-              type: string
-            clusterWorkerNum:
-              description: Number of Worker nodes
-              type: integer
-            cpreqcpu:
-              description: CPU installation requirement
-              type: string
-            cpreqmemory:
-              description: Memory installation requirement
-              type: string
-            cpreqstorage:
-              description: Storage (PVC) installation requirement
-              type: string
+            cluster:
+              description: Retrieved Cluster characteristics
+              properties:
+                clusterArch:
+                  description: Worker node architecture
+                  type: string
+                clusterCpu:
+                  description: Allocatable CPU in worker nodes
+                  type: string
+                clusterMemory:
+                  description: Allocatable memory in worker nodes
+                  type: string
+                clusterStorage:
+                  description: Available Storage - TBD - now showing 0
+                  type: string
+                clusterVersion:
+                  description: Worker node kubelet version
+                  type: string
+                clusterWorkerNum:
+                  description: Number of Worker nodes
+                  type: integer
+                ocpVersion:
+                  description: OpenShift version
+                  type: string
+              required:
+              - clusterCpu
+              - clusterMemory
+              - clusterStorage
+              - ocpVersion
+              type: object
+            cpreq:
+              description: Calculated CloudPak requirements
+              properties:
+                cpreqcpu:
+                  description: CPU installation requirement
+                  type: string
+                cpreqmemory:
+                  description: Memory installation requirement
+                  type: string
+                cpreqstorage:
+                  description: Storage (PVC) installation requirement
+                  type: string
+              required:
+              - cpreqcpu
+              - cpreqmemory
+              - cpreqstorage
+              type: object
             installedFeatures:
               description: List of installed features as investigated - TBD - now
                 empty
               items:
                 type: string
               type: array
-            ocpVersion:
-              description: OpenShift version
-              type: string
             offlineInstall:
-              description: available image registry space - TBD - not working right
-                now - compilation problem
+              description: available image registry space -
               type: boolean
             onlineInstall:
               description: access to cp.icr.io
@@ -110,13 +149,8 @@ spec:
               type: string
           required:
           - CPStatus
-          - clusterCpu
-          - clusterMemory
-          - clusterStorage
-          - cpreqcpu
-          - cpreqmemory
-          - cpreqstorage
-          - ocpVersion
+          - cluster
+          - cpreq
           - statusMessages
           type: object
       required:

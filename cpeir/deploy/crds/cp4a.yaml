@@ -4,7 +4,8 @@ metadata:
   name: cp4application
 spec:
   cptype: "cp4application"
-  cpversion: "4.0"
-  cpfeatures:
-    - transadv
-    - kabanero
+  cpversion: "4.2.1"
+  cpfeatures: []
+  action: "Check"
+  cpsizetype: "default"
+  storageClass: "ocs-storagecluster-cephfs"

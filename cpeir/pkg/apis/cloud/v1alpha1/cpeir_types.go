@@ -16,7 +16,45 @@ type CPeirSpec struct {
         CPType string `json:"cptype"`
         CPVersion string `json:"cpversion"`
 				CPSizeType string `json:"cpsizetype",omitempty`
-        CPFeatures []string `json:"cpfeatures"`
+				StorageClass string `json:"storageClass",omitempty`
+				// +kubebuilder:validation:Enum=Check;Install;HealthCheck;Upgrade
+				Action string `json:"action"`
+        CPFeatures []CPeirFeature `json:"cpfeatures"`
+}
+
+type CPeirFeature struct {
+	// Feature name
+	Name string `json:"name"`
+	// StorageClass name if needed
+	StorageClass string `json:"storageClass",omitempty`
+	// Determine ha requirements
+	//HaEnabled bool `json:"haEnabled"`
+}
+
+type CPeirCPReq struct {
+	// CPU installation requirement
+	CPReqCPU resource.Quantity `json:"cpreqcpu"`
+	// Memory installation requirement
+	CPReqMemory resource.Quantity `json:"cpreqmemory"`
+	// Storage (PVC) installation requirement
+	CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
+}
+
+type CPeirCluster struct {
+	// Allocatable CPU in worker nodes
+	ClusterCPU resource.Quantity `json:"clusterCpu"`
+	// Allocatable memory in worker nodes
+	ClusterMemory resource.Quantity `json:"clusterMemory"`
+	// Available Storage - TBD - now showing 0
+	ClusterStorage resource.Quantity `json:"clusterStorage",omitempty`
+	// Worker node architecture
+	ClusterArch string `json:"clusterArch,omitempty"`
+	// Number of Worker nodes
+	ClusterWorkerNum int `json:"clusterWorkerNum,omitempty"`
+	// Worker node kubelet version
+	ClusterKubelet string `json:"clusterVersion,omitempty"`
+	// OpenShift version
+	OCPVersion string `json:"ocpVersion",omitempty`
 }
 
 // CPeirStatus defines the observed state of CPeir
@@ -28,29 +66,13 @@ type CPeirStatus struct {
   			// Status of the CloudPak in the cluster
 				// +kubebuilder:validation:Enum=Initial;NotInstallable;ReadyToInstall;Installed;ValidationFailed;UpgradeAvailable
         CPStatus string `json:"CPStatus"`
-				// CPU installation requirement
-				CPReqCPU resource.Quantity `json:"cpreqcpu"`
-				// Memory installation requirement
-				CPReqMemory resource.Quantity `json:"cpreqmemory"`
-				// Storage (PVC) installation requirement
-				CPReqStorage resource.Quantity `json:"cpreqstorage",omitempty`
-				// Allocatable CPU in worker nodes
-				ClusterCPU resource.Quantity `json:"clusterCpu"`
-				// Allocatable memory in worker nodes
-				ClusterMemory resource.Quantity `json:"clusterMemory"`
-				// Available Storage - TBD - now showing 0
-				ClusterStorage resource.Quantity `json:"clusterStorage",omitempty`
-				// Worker node architecture
-				ClusterArch string `json:"clusterArch,omitempty"`
-				// Number of Worker nodes
-				ClusterWorkerNum int `json:"clusterWorkerNum,omitempty"`
-				// Worker node kubelet version
-				ClusterKubelet string `json:"clusterVersion,omitempty"`
-				// OpenShift version
-				OCPVersion string `json:"ocpVersion",omitempty`
+				// Calculated CloudPak requirements
+				CPRequirement CPeirCPReq `json:"cpreq"`
+				// Retrieved Cluster characteristics
+				ClusterStatus CPeirCluster `json:"cluster"`
 				// access to cp.icr.io
 				OnlineInstall bool `json:"onlineInstall,omitempty"`
-				// available image registry space - TBD - not working right now - compilation problem
+				// available image registry space -
 				OfflineInstall bool `json:"offlineInstall,omitempty"`
 				// Miscellaneous messages from the operator run
 				StatusMessages string `json:"statusMessages",omitempty`

@@ -16,19 +16,22 @@ To deploy this operator, you need the following:
 
 	```bash
 	git clone https://github.ibm.com/CASE/cpeir
-	cd cpeir/cpeir
 	```
 
 2. Build your operator image:
 
 	```bash
+	cd cpeir/cpeir
 	operator-sdk build <namespace>/cpeir:v0.0.1
+	cd ../runtime
+	docker build -t <namespace>/runtime:v0.0.1 .
 	```
 
 3. Push up the image to a docker repository
 
 	```bash
 	docker push <namespace>/cpeir:v0.0.1
+	docker push <namespace>/runtime:v0.0.1
 	```
 
 4. Create OpenShift resources:
@@ -38,17 +41,19 @@ To deploy this operator, you need the following:
 	oc new-project cpeir
 	oc create -f deploy/crds/cloud.ibm.com_cpeirs_crd.yaml
 	oc create -f deploy/service_account.yaml
-	oc create -f deploy/role.yaml
-	oc create -f deploy/role_binding.yaml
-	oc create -f deploy/clusterrole.yaml
 	oc create -f deploy/clusterrole_binding.yaml
-	oc create -f deploy/configMap.yaml
 	```
 
-4. Modify the operator.yaml with the image name you push to docker repo; create configMap with configuration values
+4. Modify the operator.yaml with the image names you push to docker repo:
 
-	```
+	```bash
 	oc create -f deploy/operator.yaml
+	```
+
+5. Create your entitlement key secret:
+
+	```bash
+	oc create secret generic entitlement --from-literal entitlement="entitlementkey"
 	```
 
 Check that the operator pod is running, use the command `oc get pod -n cpeir` and make sure that the cpeir pod status is `Running`.

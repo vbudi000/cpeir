@@ -4,7 +4,12 @@ metadata:
   name: cp4multicloud
 spec:
   cptype: "cp4multicloud"
-  cpversion: "1.2.0"
-  cpsizetype: "development"
+  cpversion: "2.1.0"
+  cpsizetype: "default"
+  storageClass: "ocs-storagecluster-ceph-rbd"
   cpfeatures:
-    - icam
+   - name: monitoring
+     storageClass: "ocs-storagecluster-ceph-rbd"
+   - name: infrastructure
+     storageClass: "ocs-storagecluster-cephfs"
+  action: "Check"
